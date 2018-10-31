@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "7952418087",
+    "firebase_url": "https://trackbeacon.firebaseio.com",
+    "project_id": "trackbeacon",
+    "storage_bucket": "trackbeacon.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:7952418087:android:a9c78380f272f271",
+        "android_client_info": {
+          "package_name": "com.example.emilysumpena.myapplication"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "7952418087-kj9pd6lt1belqrl55nre734lspih7aik.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.emilysumpena.myapplication",
+            "certificate_hash": "bcd8b207bafdcfdce833d81835b8edc5c16f5498"
+          }
+        },
+        {
+          "client_id": "7952418087-ln6eipp3uf2343sp300v3dv0enrthug4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCW32hGyuY13ppGRKWgerz3xn1cmTjtVRM"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "7952418087-ln6eipp3uf2343sp300v3dv0enrthug4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
