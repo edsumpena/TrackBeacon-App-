@@ -202,6 +202,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     int pp = -2;
     int dd = 0;
     int ev = 0;
+    int power = 0;
     int av = 0;
     int iv = 0;
     double qwer = 0;
@@ -281,6 +282,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
                 switch (menuItem.getItemId()) {
+                    case R.id.nav_ShowRSSI:
+                        if(power == 0){
+                            power = 1;
+                            menuItem.setChecked(true);
+                        }
+                        if(power == 1){
+                            power = 0;
+                            menuItem.setChecked(false);
+                        }
+                        drawerLayout.closeDrawers();
+                        return true;
                     case R.id.nav_Missing_Mode:
                         if (ev == 0 && !mac.equals("")) {
                             menuItem.setChecked(true);
@@ -1476,7 +1488,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         autoCounter = 0;
                         errorkiller2 = 0;
                         RSSI = Double.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI));
-                        displayMessage("RSSI = " + RSSI);
+                        if(power == 1) {
+                            displayMessage("RSSI = " + RSSI);
+                        }
                         Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI))+ "<- WHat came out     What's in variable -> " + RSSI);
                         RSSI = (rssiUnit) - RSSI;
                         hold = 10*locationValue;
@@ -2182,7 +2196,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         nullCounter = 0;
                         macSave = macAddressList.get(zzz);
                         RSSI = Double.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI));
-                        displayMessage("RSSI = " + RSSI);
+                        if(power == 1) {
+                            displayMessage("RSSI = " + RSSI);
+                        }
                         Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI)) + "<- WHat came out     What's in variable -> " + RSSI);
                         RSSI = (rssiUnit) - RSSI;
                         hold = 10 * locationValue;

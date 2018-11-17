@@ -13,6 +13,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -30,6 +31,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.firebase.database.DataSnapshot;
@@ -52,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private LocationManager locationManager;
     private Runnable runnable;
     String ID = "";
+    boolean buttonDisabled = false;
     boolean signal = true;
     private static final String TAG = "Debug MainActivity";
     EditText BeaconID;
@@ -59,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     static SharedPreferences.Editor editor;
     String[] PERMISSIONS = {Manifest.permission.ACCESS_WIFI_STATE, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.INTERNET, Manifest.permission.ACCESS_NETWORK_STATE};
     int lol = 0;
+    boolean found = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,13 +77,16 @@ public class MainActivity extends AppCompatActivity {
         final Button button = (Button) findViewById(R.id.fab);
         button.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                x = 1;
-                Log.d(TAG, "x = 1");
-                EditText placeholder = (EditText) findViewById(R.id.BeaconID);
-                ID = "" + placeholder.getText();
-                Log.d(TAG, "ID = " + ID);
-                flag = 0;
-                BluetoothLoop();
+                if(!buttonDisabled) {
+                    buttonDisabled = true;
+                    x = 1;
+                    Log.d(TAG, "x = 1");
+                    EditText placeholder = (EditText) findViewById(R.id.BeaconID);
+                    ID = "" + placeholder.getText();
+                    Log.d(TAG, "ID = " + ID);
+                    flag = 0;
+                    BluetoothLoop();
+                }
             }
         });
         final Button button2 = (Button) findViewById(R.id.info);
@@ -270,8 +277,9 @@ public class MainActivity extends AppCompatActivity {
                 } else if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
                     temp = temp + "\n" + device.getName() + "==>" + device.getAddress() + " " + intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI);
                     //mTextMessage2.setText("\n"+device.getName()+"==>"+device.getAddress()+"==> " + intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI ));
-                    if (device.getAddress().equals(ID)) {
+                    if (device.getAddress().equals(ID) && flag <= 5) {
                         signal = false;
+                        found = true;
                         RSSI = Double.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI));
                         Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI))+ "<- WHat came out     What's in variable -> " + RSSI);
                         RSSI = -69 - RSSI;
@@ -286,7 +294,9 @@ public class MainActivity extends AppCompatActivity {
                         editor.putString("ts", String.valueOf(System.currentTimeMillis() / 1000));
                         editor.commit();
                         flag = 5;
-                        Toast.makeText(getApplicationContext(), "Device Found!!", Toast.LENGTH_SHORT).show();
+                        TextView locationTv = (TextView) findViewById(R.id.searchStatus);
+                        locationTv.setTextColor(Color.parseColor("#ff669900"));
+                        locationTv.setText("Beacon "+ID+" Found");
                         Log.d(TAG, "Address found");
                         getLocationgps();
                         DatabaseReference mDatabase6 = FirebaseDatabase.getInstance().getReference();
@@ -404,12 +414,15 @@ public class MainActivity extends AppCompatActivity {
         runnable = new Runnable() {
             @Override
             public void run() {
-                if(flag == 4) {
-                    Toast.makeText(getApplicationContext(), "Could not find the device! Make sure bluetooth and the device is turned on and that the Beacon Address is entered correctly.", Toast.LENGTH_SHORT).show();
+                if(flag == 6 && !found) {
+                    TextView locationTv = (TextView) findViewById(R.id.searchStatus);
+                    locationTv.setTextColor(Color.parseColor("#ffCC0000"));
+                    locationTv.setText("Cannot Find Beacon "+ID);
+                    buttonDisabled = false;
                 }
-                if(flag <= 3) {
+                if(flag <= 5 && !found) {
                     System.out.println("public void run()");
-                    Toast.makeText(getApplicationContext(), "Scanning... Please wait, do NOT press button again!", Toast.LENGTH_LONG).show();
+                    searchingMessage();
                     BlueToothDiscovery();
                     handler1.postDelayed(this, 5000);
                     System.out.println("BlueToothDiscovery again");
@@ -435,7 +448,29 @@ public class MainActivity extends AppCompatActivity {
 
 
     };
-
+    public void searchingMessage(){
+        TextView locationTv = (TextView) findViewById(R.id.searchStatus);
+        locationTv.setTextColor(Color.parseColor("#ffffbb33"));
+        locationTv.setText("Searching For " + ID + ".");
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                TextView locationTv = (TextView) findViewById(R.id.searchStatus);
+                locationTv.setTextColor(Color.parseColor("#ffffbb33"));
+                locationTv.setText("Searching For " + ID + "..");
+                final Handler handler = new Handler();
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        TextView locationTv = (TextView) findViewById(R.id.searchStatus);
+                        locationTv.setTextColor(Color.parseColor("#ffffbb33"));
+                        locationTv.setText("Searching For " + ID + "...");
+                    }
+                },700);
+            }
+        },700);
+    }
 
 
 

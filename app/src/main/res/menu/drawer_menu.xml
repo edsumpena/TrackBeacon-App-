@@ -14,21 +14,13 @@
         android:icon="@drawable/searchall"
         android:title="Search for other Beacons"/>
     <item
-        android:id="@+id/nav_calibrate"
-        android:icon="@drawable/calibrate"
-        android:title="Re-calibrate iBeacon"/>
-    <item
-        android:id="@+id/nav_MissingNumber"
-        android:icon="@drawable/missingnumber"
-        android:title="Find Phone Number"/>
-    <item
-        android:id="@+id/nav_ChangeNumber"
-        android:icon="@drawable/changenumber"
-        android:title="Change Phone Number"/>
-    <item
         android:id="@+id/nav_Refresh"
         android:icon="@drawable/refresh"
         android:title="Quick Refresh Data"/>
+    <item
+        android:id="@+id/nav_calibrate"
+        android:icon="@drawable/calibrate"
+        android:title="Re-calibrate iBeacon"/>
     <item
         android:id="@+id/nav_MyLocation"
         android:icon="@drawable/mylocation"
@@ -38,13 +30,25 @@
         android:icon="@drawable/beaconlocation"
         android:title="Jump to Beacon Location"/>
     <item
+        android:id="@+id/nav_MissingNumber"
+        android:icon="@drawable/missingnumber"
+        android:title="Find Phone Number"/>
+    <item
+        android:id="@+id/nav_ChangeNumber"
+        android:icon="@drawable/changenumber"
+        android:title="Change Phone Number"/>
+    <item
         android:id="@+id/nav_ClearData"
         android:icon="@drawable/cleardata"
-        android:title="Clear Data (bottom data)"/>
+        android:title="Clear Other Found Beacon Points"/>
     <item
         android:id="@+id/nav_ClearAnonymous"
         android:icon="@drawable/clearbeacon"
         android:title="Clear Anonymous Beacon Points"/>
+    <item
+        android:id="@+id/nav_ShowRSSI"
+        android:icon="@drawable/power"
+        android:title="Show RSSI Values (debug)"/>
     <item
         android:id="@+id/nav_ChangeBeacon"
         android:icon="@drawable/exit"
