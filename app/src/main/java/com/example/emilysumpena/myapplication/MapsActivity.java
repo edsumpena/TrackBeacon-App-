@@ -105,6 +105,7 @@ import static java.lang.StrictMath.sin;
 import static java.lang.StrictMath.sqrt;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
+
     private static final String TAG = "Debug MapsActivity";
     private GoogleMap mMap;
     private Menu menu;
@@ -133,6 +134,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     boolean switchOn = false;
     String macSave = "";
     //boolean check = true;
+    public static final double EQUATORIAL_RADIUS_METER = 63781370.0;
+    public static final double DEGREE_TO_RADIAN = Math.PI / 180.0;
+    public static final double RADIAN_TO_DEGREE = 180.0 / Math.PI;
     boolean beaconInRange = true;
     int errorkiller2 = 0;
     int v = 0;
@@ -164,6 +168,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     int errorkiller69 = 0;
     double latiSave69, longiSave69 = 0;
     double savePredictedDistance69 = 0;
+    double latiSave12, longiSave12 = 0;
+    double savePredictedDistance12 = 0;
     private String deviceMacAddress;
     Circle myCircle;
     Circle myCircle3;
@@ -228,7 +234,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     Circle circle18;
     Circle circle19;
     Circle circle20;
-
+    double[] origin = {0,0};
+    double[] output = {0,0};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -311,7 +318,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             mDatabase.child("Switches").child("missingSwitch" + mac).setValue("off");
                             mDatabase.child("MacIDs").child(mac).removeValue();
                         } else {
-                            Toast.makeText(getApplicationContext(), "You must register your own beacon to use this feature! Missing mode autoset to false!", Toast.LENGTH_SHORT).show();
+                            displayMessage("You must register a beacon to use this feature!");
                             menuItem.setChecked(false);
                         }
                         drawerLayout.closeDrawers();
@@ -321,7 +328,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             menuItem.setChecked(true);
                             iv = iv + 1;
                             //Toast.makeText(getApplicationContext(), "autoSearch is now ON!", Toast.LENGTH_SHORT).show();
-                            Log.d(TAG, "autoSearch was just turned ON");
+                            //Log.d(TAG, "autoSearch was just turned ON");
                             DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
                             mDatabase.child("Switches").child("autoSwitch" + mac).setValue("on");
                             switchOn = true;
@@ -335,14 +342,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             menuItem.setChecked(false);
                             iv = 0;
                             //.makeText(getApplicationContext(), "autoSearch is now OFF!", Toast.LENGTH_SHORT).show();
-                            Log.d(TAG, "autoSearch was just turned OFF");
+                            //Log.d(TAG, "autoSearch was just turned OFF");
                             DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
                             mDatabase.child("Switches").child("autoSwitch" + mac).setValue("off");
                             switchOn = false;
                             autoflag = false;
                             autoCounter = 0;
                         } else {
-                            Toast.makeText(getApplicationContext(), "You must register your own beacon to use this feature!", Toast.LENGTH_SHORT).show();
+                            displayMessage("You must register a beacon to use this feature!");
                         }
                         drawerLayout.closeDrawers();
                         return true;
@@ -352,7 +359,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             av = av + 1;
                             menuItem.setChecked(true);
                             //Toast.makeText(getApplicationContext(), "Missing Search is now ON!", Toast.LENGTH_SHORT).show();
-                            Log.d(TAG, "MissingSearch was just turned ON");
+                            //Log.d(TAG, "MissingSearch was just turned ON");
                             DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
                             mDatabase.child("Switches").child("missingSearch" + mac).setValue("on");
                             switchOn69 = true;
@@ -388,32 +395,37 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     case R.id.nav_ChangeNumber:
                         menuItem.setChecked(false);
                         drawerLayout.closeDrawers();
-                        DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("beaconPhone").child(mac);
-                        ValueEventListener eventListener = new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                for (DataSnapshot ds : dataSnapshot.getChildren()) {
-                                    name2 = ds.getKey();
-                                    fx = name2;
+                        if(!mac.equals("")) {
+                            DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("beaconPhone").child(mac);
+                            ValueEventListener eventListener = new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                    for (DataSnapshot ds : dataSnapshot.getChildren()) {
+                                        name2 = ds.getKey();
+                                        fx = name2;
+                                    }
                                 }
-                            }
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-                            }
-                        };
-                        ref0.addListenerForSingleValueEvent(eventListener);
-                        final Handler handler = new Handler();
-                        handler.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (!fx.equals("")) {
-                                    Intent myIntent2 = new Intent(MapsActivity.this, changeNumber.class);
-                                    MapsActivity.this.startActivity(myIntent2);
-                                } else {
-                                    Toast.makeText(getApplicationContext(), "You must register your own beacon and sync a phone number to it to use this feature!", Toast.LENGTH_SHORT).show();
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
                                 }
-                            }
-                        },500);
+                            };
+                            ref0.addListenerForSingleValueEvent(eventListener);
+                            final Handler handler = new Handler();
+                            handler.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (!fx.equals("")) {
+                                        Intent myIntent2 = new Intent(MapsActivity.this, changeNumber.class);
+                                        MapsActivity.this.startActivity(myIntent2);
+                                    } else {
+                                        Toast.makeText(getApplicationContext(), "You must register your own beacon and sync a phone number to it to use this feature!", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            }, 500);
+                        } else if(mac.equals("")){
+                            displayMessage("You must register a beacon to use this feature!");
+                        }
                         return true;
                     case R.id.nav_Refresh:
                         menuItem.setChecked(false);
@@ -490,9 +502,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         drawerLayout.closeDrawers();
                         return true;*/
                     case R.id.nav_calibrate:
-                        Intent myIntentp = new Intent(MapsActivity.this, recalibrate.class);
-                        MapsActivity.this.startActivity(myIntentp);
+                        menuItem.setChecked(false);
                         drawerLayout.closeDrawers();
+                        if(!mac.equals("")) {
+                            Intent myIntentp = new Intent(MapsActivity.this, recalibrate.class);
+                            MapsActivity.this.startActivity(myIntentp);
+                        } else if(mac.equals("")){
+                            displayMessage("You must register a beacon to use this feature!");
+                        }
                         return true;
                 }
                 return false;
@@ -694,6 +711,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void getLocationgps(){
         locationManager=(LocationManager)getSystemService(Context.LOCATION_SERVICE);
         String locationProvider;
+        double[] testPoint = {-102.37426, 32.47264628};
+        localCoord2GeoCoord(origin,0, testPoint);
 
         if(ContextCompat.checkSelfPermission(this,android.Manifest.permission.ACCESS_FINE_LOCATION)== PackageManager.PERMISSION_GRANTED){
             //此处的判定是主要问题，API23之后需要先判断之后才能调用locationManager中的方法
@@ -772,7 +791,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     mMap.clear();
                     LatLng latLng = new LatLng(lati, longi);
                     if (beaconInRange){
-                        updatedLocation.add(Arrays.asList(((lati - 53.178469) / 0.00001) * 0.12179047095976932582726898256213, (longi - 6.503091) / 0.000001 * 0.00728553580298947812081345114627));
+                        double[] currentLocation = {lati,longi};
+                        updatedLocation.add(Arrays.asList(currentLocation[0], currentLocation[1]));
                     updatedDistance.add(predictedDistance);
                     zValues.add(6371000*sin(Math.toRadians(lati)));
                     }
@@ -874,7 +894,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             int b = 0;
                             int c = 0;
                             while (!latiLongiList.isEmpty() && b+1 <= distanceAwayList.size()){
-                                updatedLocation.add(Arrays.asList(((Double.valueOf(latiLongiList.get(c)) - 53.178469) / 0.00001) * 0.12179047095976932582726898256213, (Double.valueOf(latiLongiList.get(c+1)) - 6.503091) / 0.000001 * 0.00728553580298947812081345114627));
+                                double[] output2 = {0,0};
+                                output2[0] = Double.valueOf(latiLongiList.get(c));
+                                output2[1] = Double.valueOf(latiLongiList.get(c+1));
+                                updatedLocation.add(Arrays.asList(output2[0],output2[1]));
                                 updatedDistance.add(Double.valueOf(distanceAwayList.get(b)));
                                 b = b + 1;
                                 c = c + 2;
@@ -1063,15 +1086,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         public void run() {
                                             if (tempArray.length > 1 && tempArray2.length > 1) {
                                                 Log.d(TAG,"Trilateration Area");
-                                                NonLinearLeastSquaresSolver solver = new NonLinearLeastSquaresSolver(new TrilaterationFunction(tempArray, tempArray2), new LevenbergMarquardtOptimizer());
+                                                /*NonLinearLeastSquaresSolver solver = new NonLinearLeastSquaresSolver(new TrilaterationFunction(tempArray, tempArray2), new LevenbergMarquardtOptimizer());
                                                 LeastSquaresOptimizer.Optimum optimum = solver.solve();
 // the answer
-                                                double[] calculatedPosition = optimum.getPoint().toArray();
-                                                LatLng latllng = new LatLng(calculatedPosition[0]/0.12179047095976932582726898256213 * 0.00001 + 53.178469, calculatedPosition[1] / 0.00728553580298947812081345114627 * 0.000001 + 6.503091);
-                                                Log.d(TAG, "TrilaterationPosition (lat): "+calculatedPosition[0]/0.12179047095976932582726898256213 * 0.00001 + 53.178469);
-                                                Log.d(TAG, "TrilaterationPosition (long): "+ calculatedPosition[1] / 0.00728553580298947812081345114627 * 0.000001 + 6.503091);
-                                                double ten = (calculatedPosition[0]/0.12179047095976932582726898256213 * 0.00001 + 53.178469);
-                                                double eleven = (calculatedPosition[1] / 0.00728553580298947812081345114627 * 0.000001 + 6.503091);
+                                                double[] calculatedPosition = optimum.getPoint().toArray();*/
+                                               com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver trilaterationSolver = new com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver(tempArray, true);
+                                                double[] calculatedPosition = trilaterationSolver.localize(tempArray2);
+                                                LatLng latllng = new LatLng(calculatedPosition[0]/*/0.12179047095976932582726898256213 * 0.00001 + 53.178469*/, calculatedPosition[1] /*/ 0.00728553580298947812081345114627 * 0.000001 + 6.503091*/);
+                                                Log.d(TAG, "TrilaterationPosition (lat): "+calculatedPosition[0]/*/0.12179047095976932582726898256213 * 0.00001 + 53.178469*/);
+                                                Log.d(TAG, "TrilaterationPosition (long): "+ calculatedPosition[1] /*/ 0.00728553580298947812081345114627 * 0.000001 + 6.503091*/);
+                                                double ten = (calculatedPosition[0]/*/0.12179047095976932582726898256213 * 0.00001 + 53.178469*/);
+                                                double eleven = (calculatedPosition[1] /*/ 0.00728553580298947812081345114627 * 0.000001 + 6.503091*/);
                                                 mMap.addMarker(new MarkerOptions().position(latllng).title("Estimated location of your beacon is at " + ten + ", " + eleven));
 // error and geometry information
                                                 //RealVector standardDeviation = optimum.getSigma(0);
@@ -1130,15 +1155,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     public void run() {
                                         if (tempArray.length > 1 && tempArray2.length > 1) {
                                             Log.d(TAG,"Trilateration Area");
-                                            NonLinearLeastSquaresSolver solver = new NonLinearLeastSquaresSolver(new TrilaterationFunction(tempArray, tempArray2), new LevenbergMarquardtOptimizer());
+                                            /*NonLinearLeastSquaresSolver solver = new NonLinearLeastSquaresSolver(new TrilaterationFunction(tempArray, tempArray2), new LevenbergMarquardtOptimizer());
                                             LeastSquaresOptimizer.Optimum optimum = solver.solve();
 // the answer
-                                            double[] calculatedPosition = optimum.getPoint().toArray();
-                                            LatLng latllng = new LatLng(calculatedPosition[0]/0.12179047095976932582726898256213 * 0.00001 + 53.178469, calculatedPosition[1] / 0.00728553580298947812081345114627 * 0.000001 + 6.503091);
-                                            Log.d(TAG, "TrilaterationPosition (lat): "+calculatedPosition[0]/0.12179047095976932582726898256213 * 0.00001 + 53.178469);
-                                            Log.d(TAG, "TrilaterationPosition (long): "+ calculatedPosition[1] / 0.00728553580298947812081345114627 * 0.000001 + 6.503091);
-                                            double ten = (asin((6371000*sin(Math.toRadians(calculatedPosition[0])))/6371000));
-                                            double eleven = atan2(Math.toRadians(calculatedPosition[0]),Math.toRadians(calculatedPosition[1]));
+                                            double[] calculatedPosition = optimum.getPoint().toArray();*/
+                                            com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver trilaterationSolver = new com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver(tempArray, true);
+                                            double[] calculatedPosition = trilaterationSolver.localize(tempArray2);
+                                            LatLng latllng = new LatLng(calculatedPosition[0]/*/0.12179047095976932582726898256213 * 0.00001 + 53.178469*/, calculatedPosition[1] /*/ 0.00728553580298947812081345114627 * 0.000001 + 6.503091*/);
+                                            Log.d(TAG, "TrilaterationPosition (lat): "+calculatedPosition[0]/*/0.12179047095976932582726898256213 * 0.00001 + 53.178469*/);
+                                            Log.d(TAG, "TrilaterationPosition (long): "+ calculatedPosition[1] /*/ 0.00728553580298947812081345114627 * 0.000001 + 6.503091*/);
+                                            double ten = (calculatedPosition[0]/*/0.12179047095976932582726898256213 * 0.00001 + 53.178469*/);
+                                            double eleven = (calculatedPosition[1] /*/ 0.00728553580298947812081345114627 * 0.000001 + 6.503091*/);
                                             mMap.addMarker(new MarkerOptions().position(latllng).title("Estimated location of your beacon is at " + ten + ", " + eleven));
 // error and geometry information
                                             //RealVector standardDeviation = optimum.getSigma(0);
@@ -1208,13 +1235,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }, 1000);
                     }*/
                     if(anonymousFound == 1){
-                        LatLng latllng = new LatLng(latiSave69, longiSave69);
+                        LatLng latllng = new LatLng(latiSave12, longiSave12);
                         mMap.addMarker(new MarkerOptions().position(latllng).title("An anonymous iBeacon is " + savePredictedDistance69 + " away from "+ latiSave10+ ", " + longiSave10));
-                        double metersPerPx = 156543.03392 * Math.cos(latiSave69 * Math.PI / 180) / Math.pow(2, 19);
+                        double metersPerPx = 156543.03392 * Math.cos(latiSave12 * Math.PI / 180) / Math.pow(2, 19);
                         double Radius = (savePredictedDistance69 / metersPerPx) - 0.5;
                         CircleOptions circleOptions3 = (new CircleOptions()
-                                .center(new LatLng(latiSave69, longiSave69))   //set center
-                                .radius(savePredictedDistance69)   //set radius in meters
+                                .center(new LatLng(latiSave12, longiSave12))   //set center
+                                .radius(savePredictedDistance12)   //set radius in meters
                                 .fillColor(0x20008000)  //default
                                 .strokeColor(Color.GREEN)
                                 .strokeWidth(5));
@@ -2161,10 +2188,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         hold = 10 * locationValue;
                         RSSI = RSSI / hold;
                         RSSI = Math.pow(10, RSSI);
-                        savePredictedDistance69 = RSSI;
+                        savePredictedDistance12= RSSI;
                         roundDistance2();
-                        latiSave69 = lati;
-                        longiSave69 = longi;
+                        latiSave12 = lati;
+                        longiSave12 = longi;
                         //Toast.makeText(getApplicationContext(), "BEACON " + macAddressList.get(size) + " found! Data saved!", Toast.LENGTH_SHORT).show();
                         //savePredictedDistance69 = predictedDistance1234567890;
                         autoCounter69 = 0;
@@ -2659,5 +2686,31 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             navigationView.getMenu().getItem(1).setChecked(false);
             iv = 0;
         }
+    }
+    public static double calcLatChanges(double dist) {
+        return (dist / EQUATORIAL_RADIUS_METER) * RADIAN_TO_DEGREE;
+    }
+
+    public static double calcLongChanges(double latitude, double dist) {
+        double r = EQUATORIAL_RADIUS_METER * Math.cos(latitude * DEGREE_TO_RADIAN);
+        return (dist / r) * RADIAN_TO_DEGREE;
+    }
+
+    /**
+     *
+     * @param geoOrigin The coordinate of the origin of the map (or floor plan) under the geographic coordinate system (longitude and latitude)
+     * @param alpha The rotation of the map (or floor plan) relative to the east (in degrees)
+     * @param localCoord The targeting coordinate under the local coordinate system (x and y, in meters)
+     * @return The new coordinate under the geographic coordinate system
+     */
+    public static double[] localCoord2GeoCoord(double[] geoOrigin, double alpha, double[] localCoord) {
+        double d = Math.sqrt(localCoord[0] * localCoord[0] + localCoord[1] * localCoord[1]);
+        double beta = Math.atan(localCoord[1] / localCoord[0]);
+        double gamma = alpha * DEGREE_TO_RADIAN + beta;
+        double distSouth = d * Math.sin(gamma);
+        double distEast = d * Math.cos(gamma);
+        double newLong = geoOrigin[0] + calcLongChanges(geoOrigin[1], distEast);
+        double newLat = geoOrigin[1] - calcLatChanges(distSouth);
+        return new double[] {newLong, newLat};
     }
 }

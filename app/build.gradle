@@ -3,7 +3,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.example.emilysumpena.myapplication"
-        minSdkVersion 22
+        minSdkVersion 19
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
@@ -39,4 +39,20 @@ dependencies {
     implementation 'com.android.support:design:28.0.0'
     implementation 'com.lemmingapex.trilateration:trilateration:1.0.2'
     testImplementation files('lib/hamcrest-all-1.3.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-cdense-0.37.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-cdense-0.37-sources.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-core-0.37.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-core-0.37-sources.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-ddense-0.37.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-ddense-0.37-sources.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-dsparse-0.37.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-dsparse-0.37-sources.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-experimental-0.37.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-experimental-0.37-sources.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-fdense-0.37.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-fdense-0.37-sources.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-simple-0.37.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-simple-0.37-sources.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-zdense-0.37.jar')
+    implementation files('lib/ejml-v0.37-libs/ejml-zdense-0.37-sources.jar')
 }
