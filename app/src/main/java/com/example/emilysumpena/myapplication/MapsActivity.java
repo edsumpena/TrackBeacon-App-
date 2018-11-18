@@ -1459,6 +1459,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         savePredictedDistance69 = Double.valueOf(twoDForm.format(savePredictedDistance69));
         return Double.valueOf(twoDForm.format(savePredictedDistance69));
     }
+    double roundDistance3()
+    {
+        DecimalFormat twoDForm = new DecimalFormat("##.##");
+        savePredictedDistance12 = Double.valueOf(twoDForm.format(savePredictedDistance12));
+        return Double.valueOf(twoDForm.format(savePredictedDistance12));
+    }
 
     //----------------------------------------------------------------------------   \/ AutoSearch
 
@@ -2204,7 +2210,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         RSSI = RSSI / hold;
                         RSSI = Math.pow(10, RSSI);
                         savePredictedDistance12= RSSI;
-                        roundDistance2();
+                        roundDistance3();
                         latiSave12 = lati;
                         longiSave12 = longi;
                         //Toast.makeText(getApplicationContext(), "BEACON " + macAddressList.get(size) + " found! Data saved!", Toast.LENGTH_SHORT).show();
