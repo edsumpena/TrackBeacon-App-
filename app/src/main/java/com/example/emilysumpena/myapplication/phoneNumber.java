@@ -81,6 +81,8 @@ public class phoneNumber extends Activity {
                 }
                 if(!a.equals(b)){
                     Toast.makeText(getApplicationContext(), "Your phone numbers do not match!", Toast.LENGTH_SHORT).show();
+                } else if(a.length() != 12 || b.length() != 12){
+                    Toast.makeText(getApplicationContext(), "Your phone numbers should be in the format XXX-XXX-XXXX!", Toast.LENGTH_SHORT).show();
                 }
                 if(placeholder.equals("")){
                     Toast.makeText(getApplicationContext(), "You must give a phone number!", Toast.LENGTH_SHORT).show();

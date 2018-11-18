@@ -118,6 +118,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     double RSSI = 0;
     int hold = 0;
     int getDataFlag = 0;
+    double calibratedUnit = 0;
     int flag = 0;
     int blueflag = 0;
     int indicator = 0;
@@ -2205,7 +2206,45 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             displayMessage("RSSI = " + RSSI);
                         }
                         Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI)) + "<- WHat came out     What's in variable -> " + RSSI);
-                        RSSI = (rssiUnit) - RSSI;
+                        DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference();
+                        rootRef.child("MacIDs");
+                        rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                if (dataSnapshot.hasChild(macSave)){
+                                    DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("calibration").child(mac);
+                                    ValueEventListener eventListener = new ValueEventListener() {
+                                        @Override
+                                        public void onDataChange(DataSnapshot dataSnapshot) {
+                                            for(DataSnapshot ds : dataSnapshot.getChildren()) {
+                                                calibratedUnit = Double.valueOf(ds.getKey());
+                                            }
+                                        }
+                                        @Override
+                                        public void onCancelled(DatabaseError databaseError) {}
+                                    };
+                                    ref0.addListenerForSingleValueEvent(eventListener);
+                                } else {
+                                    calibratedUnit = -69.0;
+                                }
+                                        /*final Handler handler = new Handler();
+                                        handler.postDelayed(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                            }
+                                        }, 700);*/
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                Toast.makeText(getApplicationContext(), "Failed to save phone number.", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        final Handler handler = new Handler();
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                        RSSI = (calibratedUnit) - RSSI;
                         hold = 10 * locationValue;
                         RSSI = RSSI / hold;
                         RSSI = Math.pow(10, RSSI);
@@ -2227,6 +2266,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         timeZone = TimeZone.getDefault().getDisplayName();
                         notDataDetector();
                         anonymousFound = 1;
+                            }
+                        }, 700);
                         try {
                             JSONObject jsonObject1 = new JSONObject();
                             jsonObject1.put("mac", device.getAddress());

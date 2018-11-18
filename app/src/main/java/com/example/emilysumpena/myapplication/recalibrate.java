@@ -158,14 +158,20 @@ public class recalibrate extends AppCompatActivity {
                                 public void run() {
                                     DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
                                     mDatabase.child("calibration").child(mac).removeValue();
+                                    final Handler handler = new Handler();
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
                                     mDatabase.child("calibration").child(mac).child((int) rssiMedian +"").setValue("");
                                     switchOn = false;
                                     calibrationCounter = 1;
                                     displayMessage("Calibration Successful!");
                                     Intent myIntent = new Intent(recalibrate.this, MapsActivity.class);
                                     recalibrate.this.startActivity(myIntent);
+                                        }
+                                    },500);
                                 }
-                            },1000);
+                            },600);
                         }
                         textViewCounter = textViewCounter + 1;
                         Log.d(TAG, "Address found");
