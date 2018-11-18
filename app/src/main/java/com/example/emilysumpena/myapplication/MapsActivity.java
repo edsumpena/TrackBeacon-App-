@@ -131,6 +131,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Runnable runnable;
     private Runnable run_able;
     boolean autoflag = true;
+    String trans = "";
     boolean override = false;
     boolean switchOn = false;
     String macSave = "";
@@ -2179,7 +2180,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                     }, 700);
 
-
             if (BluetoothDevice.ACTION_FOUND.equals(action) && switchOn69 && macAddressList.size() != 0) {
                 Log.d(TAG, "ACTION = bluetooth device");
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
@@ -2206,25 +2206,26 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             displayMessage("RSSI = " + RSSI);
                         }
                         Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI)) + "<- WHat came out     What's in variable -> " + RSSI);
-                        DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference();
-                        rootRef.child("MacIDs");
+                        DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("calibration");
                         rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
                             @Override
                             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                                 if (dataSnapshot.hasChild(macSave)){
-                                    DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("calibration").child(mac);
+                                    DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("calibration").child(macSave);
                                     ValueEventListener eventListener = new ValueEventListener() {
                                         @Override
                                         public void onDataChange(DataSnapshot dataSnapshot) {
                                             for(DataSnapshot ds : dataSnapshot.getChildren()) {
                                                 calibratedUnit = Double.valueOf(ds.getKey());
+                                                Log.d(TAG, "calibratedUnit = " + Double.valueOf(ds.getKey()));
                                             }
                                         }
                                         @Override
                                         public void onCancelled(DatabaseError databaseError) {}
                                     };
                                     ref0.addListenerForSingleValueEvent(eventListener);
-                                } else {
+                                } else if (!dataSnapshot.hasChild(macSave)) {
+                                    Log.d(TAG,"calibratedUnit is not in Database!");
                                     calibratedUnit = -69.0;
                                 }
                                         /*final Handler handler = new Handler();
@@ -2244,6 +2245,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         handler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
+                                Log.d(TAG, "calibratedUnit = " + calibratedUnit);
                         RSSI = (calibratedUnit) - RSSI;
                         hold = 10 * locationValue;
                         RSSI = RSSI / hold;
