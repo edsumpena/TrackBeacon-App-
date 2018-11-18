@@ -197,18 +197,18 @@
 
     <TextView
         android:id="@+id/searchStatus"
-        android:layout_width="567dp"
-        android:layout_height="61dp"
+        android:layout_width="594dp"
+        android:layout_height="96dp"
         android:layout_marginBottom="8dp"
         android:layout_marginTop="8dp"
+        android:textAlignment="center"
         android:textSize="35sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.506"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.763" />
+        app:layout_constraintVertical_bias="0.76" />
 
 
 </android.support.constraint.ConstraintLayout>

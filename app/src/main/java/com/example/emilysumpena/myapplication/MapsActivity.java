@@ -286,8 +286,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if(power == 0){
                             power = 1;
                             menuItem.setChecked(true);
-                        }
-                        if(power == 1){
+                        } else if(power == 1){
                             power = 0;
                             menuItem.setChecked(false);
                         }
@@ -1248,7 +1247,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }*/
                     if(anonymousFound == 1){
                         LatLng latllng = new LatLng(latiSave12, longiSave12);
-                        mMap.addMarker(new MarkerOptions().position(latllng).title("An anonymous iBeacon is " + savePredictedDistance69 + " away from "+ latiSave10+ ", " + longiSave10));
+                        mMap.addMarker(new MarkerOptions().position(latllng).title("An anonymous iBeacon is " + savePredictedDistance12 + " away from "+ latiSave12+ ", " + longiSave12));
                         double metersPerPx = 156543.03392 * Math.cos(latiSave12 * Math.PI / 180) / Math.pow(2, 19);
                         double Radius = (savePredictedDistance69 / metersPerPx) - 0.5;
                         CircleOptions circleOptions3 = (new CircleOptions()
@@ -2413,12 +2412,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     rootRef.child(macSave).child(deviceMacAddress).child("date&time" + macSave).setValue(String.valueOf(notDate) + ", " + String.valueOf(notTime) + " " + String.valueOf(timeZone));
                 //}
                // if (!dataSnapshot.hasChild("predictedDistance" + macAddressList.get(size))) {
-                rootRef.child(macSave).child(deviceMacAddress).child("predictedDistance" + macSave).setValue(String.valueOf(savePredictedDistance69) + " Meters");
+                rootRef.child(macSave).child(deviceMacAddress).child("predictedDistance" + macSave).setValue(String.valueOf(savePredictedDistance12) + " Meters");
                 //}
                 //if (!dataSnapshot.hasChild("location" + mac)) {
-                    rootRef.child(macSave).child(deviceMacAddress).child("latitude" + macSave).setValue(String.valueOf(latiSave69));
-                rootRef.child(macSave).child(deviceMacAddress).child("longitude" + macSave).setValue(String.valueOf(longiSave69));
-                rootRef.child(macSave).child(deviceMacAddress).child("raw" + macSave).setValue(String.valueOf(savePredictedDistance69));
+                    rootRef.child(macSave).child(deviceMacAddress).child("latitude" + macSave).setValue(String.valueOf(latiSave12));
+                rootRef.child(macSave).child(deviceMacAddress).child("longitude" + macSave).setValue(String.valueOf(longiSave12));
+                rootRef.child(macSave).child(deviceMacAddress).child("raw" + macSave).setValue(String.valueOf(savePredictedDistance12));
 
                 //}
                 //if (!dataSnapshot.hasChild("macAddress" + mac)){

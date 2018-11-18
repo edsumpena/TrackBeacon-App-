@@ -449,23 +449,29 @@ public class MainActivity extends AppCompatActivity {
 
     };
     public void searchingMessage(){
-        TextView locationTv = (TextView) findViewById(R.id.searchStatus);
-        locationTv.setTextColor(Color.parseColor("#ffffbb33"));
-        locationTv.setText("Searching For " + ID + ".");
+        if(!found) {
+            TextView locationTv = (TextView) findViewById(R.id.searchStatus);
+            locationTv.setTextColor(Color.parseColor("#ffffbb33"));
+            locationTv.setText("Searching For " + ID + ".");
+        }
         final Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                TextView locationTv = (TextView) findViewById(R.id.searchStatus);
-                locationTv.setTextColor(Color.parseColor("#ffffbb33"));
-                locationTv.setText("Searching For " + ID + "..");
+                if(!found) {
+                    TextView locationTv = (TextView) findViewById(R.id.searchStatus);
+                    locationTv.setTextColor(Color.parseColor("#ffffbb33"));
+                    locationTv.setText("Searching For " + ID + "..");
+                }
                 final Handler handler = new Handler();
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        TextView locationTv = (TextView) findViewById(R.id.searchStatus);
-                        locationTv.setTextColor(Color.parseColor("#ffffbb33"));
-                        locationTv.setText("Searching For " + ID + "...");
+                        if(!found) {
+                            TextView locationTv = (TextView) findViewById(R.id.searchStatus);
+                            locationTv.setTextColor(Color.parseColor("#ffffbb33"));
+                            locationTv.setText("Searching For " + ID + "...");
+                        }
                     }
                 },700);
             }
