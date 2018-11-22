@@ -3,7 +3,7 @@ package com.example.emilysumpena.myapplication;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
-import static com.example.emilysumpena.myapplication.MapsActivity.settinggs;
+import static com.example.emilysumpena.myapplication.MainActivity.settings;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -63,7 +63,7 @@ public class voiceCommands extends AppCompatActivity implements TextToSpeech.OnI
         setContentView(R.layout.activity_voice_commands);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        mac = settinggs.getString("mac", "0");
+        mac = settings.getString("mac", "0");
         setSupportActionBar(toolbar);
         tts = new TextToSpeech(this, this);
         init(this);
@@ -244,7 +244,7 @@ public class voiceCommands extends AppCompatActivity implements TextToSpeech.OnI
                 if (text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1) {
                     done = true;
                 }
-                if (text.toLowerCase().indexOf("recalibrate".toLowerCase()) != -1) {
+                if (text.toLowerCase().indexOf("recalibrate".toLowerCase()) != -1 || text.toLowerCase().indexOf("calibrate".toLowerCase()) != -1) {
                     counter = counter + 1;
                     done = true;
                 }
@@ -285,6 +285,7 @@ public class voiceCommands extends AppCompatActivity implements TextToSpeech.OnI
                 if (done || trilateratedPoint) {
                     if(trilateratedPoint) {
                         loading = false;
+                        Log.d(TAG,"mac = "+mac);
                         textViewTwo();
                         DatabaseReference mDatabase22 = FirebaseDatabase.getInstance().getReference();
                         DatabaseReference mRSSI22 = mDatabase22.child("Trilaterated Point");
@@ -341,143 +342,160 @@ public class voiceCommands extends AppCompatActivity implements TextToSpeech.OnI
                         handler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
-                                roundLatLong();
-                                cancelRecognizing();
-                                resumeVolume();
-                                say("You are " + trilateratedDistance + " meters away from estimated Beacon location of about latitude " + trilateratedLat + ", longitude " + trilateratedLong);
-                                final Handler handler = new Handler();
-                                handler.postDelayed(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        if(done) {
-                                            textViewThree();
-                                            resumeVolume();
-                                            say("Please wait while your other requests are being fulfilled.");
-                                            final Handler handler = new Handler();
-                                            handler.postDelayed(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    if(counter > 1){
-                                                        error = true;
-                                                    }
-                                                    if(!error && text.toLowerCase().indexOf("my location".toLowerCase()) == -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1 || text.toLowerCase().indexOf("my location".toLowerCase()) != -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) == -1) {
-                                                        if (text.toLowerCase().indexOf("my location".toLowerCase()) != -1) {
-                                                            FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("jump2My" + mac).setValue("true");
-                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                            voiceCommands.this.startActivity(myIntent);
+                                if (!unknownTrilaterated) {
+                                    roundLatLong();
+                                    cancelRecognizing();
+                                    resumeVolume();
+                                    say("You are " + trilateratedDistance + " meters away from estimated Beacon location of about latitude " + trilateratedLat + ", longitude " + trilateratedLong);
+                                    final Handler handler = new Handler();
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            if (done) {
+                                                textViewThree();
+                                                resumeVolume();
+                                                say("Please wait while your other requests are being fulfilled.");
+                                                final Handler handler = new Handler();
+                                                handler.postDelayed(new Runnable() {
+                                                    @Override
+                                                    public void run() {
+                                                        if (counter > 1) {
+                                                            error = true;
                                                         }
-                                                        if (text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1) {
-                                                            FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("jump2Beacon" + mac).setValue("true");
-                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                            voiceCommands.this.startActivity(myIntent);
-                                                        }
-                                                    } else if(text.toLowerCase().indexOf("my location".toLowerCase()) != -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1 || counter > 1){
-                                                        error = true;
-                                                    }
-                                                    if(!error && counter == 1) {
-                                                        if (text.toLowerCase().indexOf("find".toLowerCase()) != -1 && text.toLowerCase().indexOf("phone numbers".toLowerCase()) != -1 || text.toLowerCase().indexOf("find".toLowerCase()) != -1 && text.toLowerCase().indexOf("phone number".toLowerCase()) != -1) {
-                                                            Intent myIntent = new Intent(voiceCommands.this, numberCheck.class);
-                                                            voiceCommands.this.startActivity(myIntent);
-                                                        }
-                                                        if (text.toLowerCase().indexOf("change".toLowerCase()) != -1 && text.toLowerCase().indexOf("phone number".toLowerCase()) != -1) {
-                                                            Intent myIntent = new Intent(voiceCommands.this, changeNumber.class);
-                                                            voiceCommands.this.startActivity(myIntent);
-                                                        }
-                                                        if (text.toLowerCase().indexOf("recalibrate".toLowerCase()) != -1) {
-                                                            Intent myIntent = new Intent(voiceCommands.this, recalibrate.class);
-                                                            voiceCommands.this.startActivity(myIntent);
-                                                        }
-                                                        if (text.toLowerCase().indexOf("exit".toLowerCase()) != -1 || text.toLowerCase().indexOf("change beacon".toLowerCase()) != -1) {
-                                                            Intent myIntent = new Intent(voiceCommands.this, MainActivity.class);
-                                                            voiceCommands.this.startActivity(myIntent);
-                                                        }
-                                                    } else if(counter > 1){
-                                                        error = true;
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("on".toLowerCase()) != -1 && text.toLowerCase().indexOf("missing mode".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSwitch" + mac).setValue("on");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("on".toLowerCase()) != -1 && text.toLowerCase().indexOf("auto search".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("autoSwitch" + mac).setValue("on");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("search".toLowerCase()) != -1 && text.toLowerCase().indexOf("other beacons".toLowerCase()) != -1 || text.toLowerCase().indexOf("find".toLowerCase()) != -1 && text.toLowerCase().indexOf("other beacons".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSearch" + mac).setValue("on");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("show RSSI".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("rssiSwitch" + mac).setValue("on");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("voice commands".toLowerCase()) != -1 || text.toLowerCase().indexOf("voice command".toLowerCase()) != -1 && text.toLowerCase().indexOf("turn off".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("voiceSwitch" + mac).setValue("off");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("clear".toLowerCase()) != -1 && text.toLowerCase().indexOf("anonymous".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("clearAnonymous" + mac).setValue("true");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("clear".toLowerCase()) != -1 && text.toLowerCase().indexOf("found".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("clearFound" + mac).setValue("true");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("missing mode".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSwitch" + mac).setValue("off");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("auto search".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("autoSwitch" + mac).setValue("off");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("stop".toLowerCase()) != -1 && text.toLowerCase().indexOf("other beacons".toLowerCase()) != -1 || text.toLowerCase().indexOf("find".toLowerCase()) != -1 && text.toLowerCase().indexOf("other beacons".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSearch" + mac).setValue("off");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if (!error && text.toLowerCase().indexOf("RSSI".toLowerCase()) != -1 && text.toLowerCase().indexOf("hide".toLowerCase()) != -1 || text.toLowerCase().indexOf("RSSI".toLowerCase()) != -1 && text.toLowerCase().indexOf("stop".toLowerCase()) != -1) {
-                                                        FirebaseDatabase.getInstance().getReference().child("Switches").child("rssiSwitch" + mac).setValue("off");
-                                                        Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                                        voiceCommands.this.startActivity(myIntent);
-                                                    }
-                                                    if(error){
-                                                        loading = false;
-                                                        cancelRecognizing();
-                                                        textViewFour();
-                                                        resumeVolume();
-                                                        say("Your commands could not be processed since they conflict with each other. Please try again.");
-                                                        final Handler handler = new Handler();
-                                                        handler.postDelayed(new Runnable() {
-                                                            @Override
-                                                            public void run() {
-                                                                loading = true;
-                                                                loadingLoop();
-                                                                startRecognizing();
-                                                                error = false;
-                                                                counter = 0;
+                                                        if (!error && text.toLowerCase().indexOf("my location".toLowerCase()) == -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1 || text.toLowerCase().indexOf("my location".toLowerCase()) != -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) == -1) {
+                                                            if (text.toLowerCase().indexOf("my location".toLowerCase()) != -1) {
+                                                                FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("jump2My" + mac).setValue("true");
+                                                                Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                                voiceCommands.this.startActivity(myIntent);
                                                             }
-                                                        }, 6000);
-                                                    }
+                                                            if (text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1) {
+                                                                FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("jump2Beacon" + mac).setValue("true");
+                                                                Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                                voiceCommands.this.startActivity(myIntent);
+                                                            }
+                                                        } else if (text.toLowerCase().indexOf("my location".toLowerCase()) != -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1 || counter > 1) {
+                                                            error = true;
+                                                        }
+                                                        if (!error && counter == 1) {
+                                                            if (text.toLowerCase().indexOf("find".toLowerCase()) != -1 && text.toLowerCase().indexOf("phone numbers".toLowerCase()) != -1 || text.toLowerCase().indexOf("find".toLowerCase()) != -1 && text.toLowerCase().indexOf("phone number".toLowerCase()) != -1) {
+                                                                Intent myIntent = new Intent(voiceCommands.this, numberCheck.class);
+                                                                voiceCommands.this.startActivity(myIntent);
+                                                            }
+                                                            if (!mac.equals("")&&text.toLowerCase().indexOf("change".toLowerCase()) != -1 && text.toLowerCase().indexOf("phone number".toLowerCase()) != -1) {
+                                                                Intent myIntent = new Intent(voiceCommands.this, changeNumber.class);
+                                                                voiceCommands.this.startActivity(myIntent);
+                                                            }
+                                                            if (!mac.equals("")&&text.toLowerCase().indexOf("recalibrate".toLowerCase()) != -1) {
+                                                                Intent myIntent = new Intent(voiceCommands.this, recalibrate.class);
+                                                                voiceCommands.this.startActivity(myIntent);
+                                                            }
+                                                            if (text.toLowerCase().indexOf("exit".toLowerCase()) != -1 || text.toLowerCase().indexOf("change beacon".toLowerCase()) != -1) {
+                                                                Intent myIntent = new Intent(voiceCommands.this, MainActivity.class);
+                                                                voiceCommands.this.startActivity(myIntent);
+                                                            }
+                                                        } else if (counter > 1) {
+                                                            error = true;
+                                                        }
+                                                        if (!mac.equals("")&&!error && text.toLowerCase().indexOf("on".toLowerCase()) != -1 && text.toLowerCase().indexOf("missing mode".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSwitch" + mac).setValue("on");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!mac.equals("")&&!error && text.toLowerCase().indexOf("on".toLowerCase()) != -1 && text.toLowerCase().indexOf("auto search".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("autoSwitch" + mac).setValue("on");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!error && text.toLowerCase().indexOf("search".toLowerCase()) != -1 && text.toLowerCase().indexOf("other beacons".toLowerCase()) != -1 || text.toLowerCase().indexOf("find".toLowerCase()) != -1 && text.toLowerCase().indexOf("other beacons".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSearch" + mac).setValue("on");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!error && text.toLowerCase().indexOf("show RSSI".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("rssiSwitch" + mac).setValue("on");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("voice commands".toLowerCase()) != -1 || text.toLowerCase().indexOf("voice command".toLowerCase()) != -1 && text.toLowerCase().indexOf("turn off".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("voiceSwitch" + mac).setValue("off");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!error && text.toLowerCase().indexOf("clear".toLowerCase()) != -1 && text.toLowerCase().indexOf("anonymous".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("clearAnonymous" + mac).setValue("true");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!error && text.toLowerCase().indexOf("clear".toLowerCase()) != -1 && text.toLowerCase().indexOf("found".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("clearFound" + mac).setValue("true");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!mac.equals("")&&!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("missing mode".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSwitch" + mac).setValue("off");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!mac.equals("")&&!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("auto search".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("autoSwitch" + mac).setValue("off");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!error && text.toLowerCase().indexOf("stop".toLowerCase()) != -1 && text.toLowerCase().indexOf("other beacons".toLowerCase()) != -1 || text.toLowerCase().indexOf("find".toLowerCase()) != -1 && text.toLowerCase().indexOf("other beacons".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSearch" + mac).setValue("off");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (!error && text.toLowerCase().indexOf("RSSI".toLowerCase()) != -1 && text.toLowerCase().indexOf("hide".toLowerCase()) != -1 || text.toLowerCase().indexOf("RSSI".toLowerCase()) != -1 && text.toLowerCase().indexOf("stop".toLowerCase()) != -1) {
+                                                            FirebaseDatabase.getInstance().getReference().child("Switches").child("rssiSwitch" + mac).setValue("off");
+                                                            Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
+                                                            voiceCommands.this.startActivity(myIntent);
+                                                        }
+                                                        if (error) {
+                                                            loading = false;
+                                                            cancelRecognizing();
+                                                            textViewFour();
+                                                            resumeVolume();
+                                                            say("Your commands could not be processed since they conflict with each other. Please try again.");
+                                                            final Handler handler = new Handler();
+                                                            handler.postDelayed(new Runnable() {
+                                                                @Override
+                                                                public void run() {
+                                                                    loading = true;
+                                                                    loadingLoop();
+                                                                    startRecognizing();
+                                                                    error = false;
+                                                                    counter = 0;
+                                                                }
+                                                            }, 6000);
+                                                        }
 
-                                                }
-                                            }, 3000);
-                                        } else {
-                                            loading = true;
-                                            startRecognizing();
-                                            loadingLoop();
+                                                    }
+                                                }, 3000);
+                                            } else {
+                                                loading = true;
+                                                startRecognizing();
+                                                loadingLoop();
+                                            }
                                         }
-                                    }
                                     }, 12500);
 
+                                } else {
+                                    cancelRecognizing();
+                                    resumeVolume();
+                                    say("Your beacon does not have a estimated location. Make sure that other devices have detected the beacon and missing mode is on.");
+                                    final Handler handler = new Handler();
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            loading = true;
+                                            loadingLoop();
+                                            startRecognizing();
+                                            error = false;
+                                            counter = 0;
+                                        }
+                                    }, 8000);
+                                }
                             }
                         }, 500);
                     } else if(done && !trilateratedPoint){
@@ -500,11 +518,11 @@ public class voiceCommands extends AppCompatActivity implements TextToSpeech.OnI
                                 Intent myIntent = new Intent(voiceCommands.this, numberCheck.class);
                                 voiceCommands.this.startActivity(myIntent);
                             }
-                            if (text.toLowerCase().indexOf("change".toLowerCase()) != -1 && text.toLowerCase().indexOf("phone number".toLowerCase()) != -1) {
+                            if (!mac.equals("")&&text.toLowerCase().indexOf("change".toLowerCase()) != -1 && text.toLowerCase().indexOf("phone number".toLowerCase()) != -1) {
                                 Intent myIntent = new Intent(voiceCommands.this, changeNumber.class);
                                 voiceCommands.this.startActivity(myIntent);
                             }
-                            if (text.toLowerCase().indexOf("recalibrate".toLowerCase()) != -1) {
+                            if (!mac.equals("")&&text.toLowerCase().indexOf("recalibrate".toLowerCase()) != -1) {
                                 Intent myIntent = new Intent(voiceCommands.this, recalibrate.class);
                                 voiceCommands.this.startActivity(myIntent);
                             }
@@ -515,12 +533,12 @@ public class voiceCommands extends AppCompatActivity implements TextToSpeech.OnI
                         } else if(counter > 1){
                             error = true;
                         }
-                        if (!error && text.toLowerCase().indexOf("on".toLowerCase()) != -1 && text.toLowerCase().indexOf("missing mode".toLowerCase()) != -1) {
+                        if (!mac.equals("")&&!error && text.toLowerCase().indexOf("on".toLowerCase()) != -1 && text.toLowerCase().indexOf("missing mode".toLowerCase()) != -1) {
                             FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSwitch" + mac).setValue("on");
                             Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
                             voiceCommands.this.startActivity(myIntent);
                         }
-                        if (!error && text.toLowerCase().indexOf("on".toLowerCase()) != -1 && text.toLowerCase().indexOf("auto search".toLowerCase()) != -1) {
+                        if (!mac.equals("")&&!error && text.toLowerCase().indexOf("on".toLowerCase()) != -1 && text.toLowerCase().indexOf("auto search".toLowerCase()) != -1) {
                             FirebaseDatabase.getInstance().getReference().child("Switches").child("autoSwitch" + mac).setValue("on");
                             Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
                             voiceCommands.this.startActivity(myIntent);
@@ -550,26 +568,12 @@ public class voiceCommands extends AppCompatActivity implements TextToSpeech.OnI
                             Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
                             voiceCommands.this.startActivity(myIntent);
                         }
-                        if(!error && text.toLowerCase().indexOf("my location".toLowerCase()) == -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1 || text.toLowerCase().indexOf("my location".toLowerCase()) != -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) == -1) {
-                            if (!error && text.toLowerCase().indexOf("my location".toLowerCase()) != -1) {
-                                FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("jump2My" + mac).setValue("true");
-                                Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                voiceCommands.this.startActivity(myIntent);
-                            }
-                            if (!error && text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1) {
-                                FirebaseDatabase.getInstance().getReference().child("Voice Commands").child("jump2Beacon" + mac).setValue("true");
-                                Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
-                                voiceCommands.this.startActivity(myIntent);
-                            }
-                        } else if(text.toLowerCase().indexOf("my location".toLowerCase()) != -1 && text.toLowerCase().indexOf("beacon location".toLowerCase()) != -1){
-                            error = true;
-                        }
-                        if (!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("missing mode".toLowerCase()) != -1) {
+                        if (!mac.equals("")&&!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("missing mode".toLowerCase()) != -1) {
                             FirebaseDatabase.getInstance().getReference().child("Switches").child("missingSwitch" + mac).setValue("off");
                             Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
                             voiceCommands.this.startActivity(myIntent);
                         }
-                        if (!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("auto search".toLowerCase()) != -1) {
+                        if (!mac.equals("")&&!error && text.toLowerCase().indexOf("off".toLowerCase()) != -1 && text.toLowerCase().indexOf("auto search".toLowerCase()) != -1) {
                             FirebaseDatabase.getInstance().getReference().child("Switches").child("autoSwitch" + mac).setValue("off");
                             Intent myIntent = new Intent(voiceCommands.this, MapsActivity.class);
                             voiceCommands.this.startActivity(myIntent);
@@ -621,6 +625,9 @@ public class voiceCommands extends AppCompatActivity implements TextToSpeech.OnI
             super.onDestroy();
             if (mSpeechRecognizer != null) {
                 mSpeechRecognizer.destroy();
+            }
+            if(tts != null){
+                tts.shutdown();
             }
         }
 

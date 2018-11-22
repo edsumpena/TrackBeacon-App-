@@ -308,6 +308,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             menuItem.setChecked(false);
                             ev = 0;
                             switchOn70 = false;
+                            removeDatabase();
                             Log.d(TAG, "Missing was just turned OFF");
                             DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
                             mDatabase.child("Switches").child("missingSwitch" + mac).setValue("off");
@@ -2109,6 +2110,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }, 1000);
         } else if (missingSwitch.equals("off") && !mac.equals("")) {
             switchOn70 = false;
+            removeDatabase();
             ev = 0;
             Log.d(TAG, "Missing switch autoset to OFF");
             navigationView.getMenu().getItem(0).setChecked(false);
@@ -2359,7 +2361,11 @@ public void resumeVolume(){
                     Log.d(TAG, "lol Voice result = " + text);
                     if (text.toLowerCase().indexOf("okay track beacon".toLowerCase()) != -1 && voiceSwitch.equals("on")) {
                         editor = settinggs.edit();
-                        editor.putString("mac", mac);
+                        if(!mac.equals("")) {
+                            editor.putString("mac", mac);
+                        } else {
+                            editor.putString("mac","");
+                        }
                         Intent myIntent = new Intent(MapsActivity.this, voiceCommands.class);
                         MapsActivity.this.startActivity(myIntent);
                     } else {
@@ -2505,5 +2511,21 @@ public void resumeVolume(){
             }
         });
 
+    }
+    public void removeDatabase(){
+        DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("Trilaterated Point");
+        rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                rootRef.child("lat"+mac).removeValue();
+                rootRef.child("long"+mac).removeValue();
+                rootRef.child("distance"+mac).removeValue();
+
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.d(TAG, "Failed to get missingSwitch state.");
+            }
+        });
     }
 }
