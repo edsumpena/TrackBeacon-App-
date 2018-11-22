@@ -8,12 +8,10 @@
     android:layout_height="match_parent"
     tools:context=".MapsActivity"
     android:fitsSystemWindows="true">
-
     <android.support.constraint.ConstraintLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
-
         <fragment xmlns:android="http://schemas.android.com/apk/res/android"
             xmlns:map="http://schemas.android.com/apk/res-auto"
             xmlns:tools="http://schemas.android.com/tools"
@@ -216,6 +214,7 @@ android:layout_gravity="start"
 app:headerLayout="@layout/header_layout"
 app:menu="@menu/drawer_menu" />
     </android.support.v4.widget.DrawerLayout>
+
 
 
 

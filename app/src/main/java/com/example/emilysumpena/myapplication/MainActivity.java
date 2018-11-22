@@ -42,6 +42,8 @@ import com.google.firebase.database.ValueEventListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.text.DecimalFormat;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -60,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
     EditText BeaconID;
     static SharedPreferences settings;
     static SharedPreferences.Editor editor;
-    String[] PERMISSIONS = {Manifest.permission.ACCESS_WIFI_STATE, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.INTERNET, Manifest.permission.ACCESS_NETWORK_STATE};
+    String[] PERMISSIONS = {Manifest.permission.ACCESS_WIFI_STATE, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.INTERNET, Manifest.permission.ACCESS_NETWORK_STATE, Manifest.permission.RECORD_AUDIO, Manifest.permission.MODIFY_AUDIO_SETTINGS};
     int lol = 0;
     boolean found = false;
 
@@ -105,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
                 editor.putString("ts", "");
                 editor.commit();
                 Intent myIntent = new Intent(MainActivity.this, MapsActivity.class);
+                myIntent.setAction("android.intent.action.MAIN");
                 MainActivity.this.startActivity(myIntent);
             }
         });
@@ -477,6 +480,7 @@ public class MainActivity extends AppCompatActivity {
             }
         },700);
     }
+
 
 
 

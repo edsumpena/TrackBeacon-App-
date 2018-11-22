@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
 
     <!-- To auto-complete the email text field in the login form with the user's emails -->
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
@@ -32,6 +34,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MapsActivity"
+            android:label="@string/title_activity_maps">
+    </activity>
+
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
              (See the file "res/values/google_maps_api.xml").
@@ -44,9 +51,6 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBS8c-vKosanZWnzXSq_ee4q7iN7kg5yJc" />
 
-        <activity
-            android:name=".MapsActivity"
-            android:label="@string/title_activity_maps" />
         <activity
             android:name=".data"
             android:label="@string/title_activity_data" />
@@ -63,6 +67,10 @@
         <activity
             android:name=".recalibrate"
             android:label="@string/title_activity_recalibrate"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name=".voiceCommands"
+            android:label="@string/title_activity_voice_commands"
             android:theme="@style/AppTheme"></activity>
     </application>
 

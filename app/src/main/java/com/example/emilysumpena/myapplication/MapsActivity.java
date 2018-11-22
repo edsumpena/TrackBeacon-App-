@@ -1,9 +1,16 @@
 package com.example.emilysumpena.myapplication;
 
+import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
+import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.media.AudioManager;
 import android.provider.Settings;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.support.v7.app.ActionBar;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -61,6 +68,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.TimeZone;
 import static com.example.emilysumpena.myapplication.MainActivity.settings;
 import static java.lang.StrictMath.sin;
@@ -83,6 +91,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     int blueflag = 0;
     int indicator = 0;
     int errorkiller = 0;
+    boolean inBackground = false;
     int autoCounter = 0;
     int length = 0;
     double predictedDistance = 0;
@@ -95,6 +104,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     boolean switchOn = false;
     String macSave = "";
     boolean beaconInRange = true;
+    private SpeechRecognizer mSpeechRecognizer;
+    private Intent mSpeechRecognizerIntent;
+    int whatever = 0;
     int errorkiller2 = 0;
     int v = 0;
     boolean beginning = true;
@@ -104,6 +116,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     boolean autoSwitchFlag;
     int kk = 0;
     double myLat = 0;
+    int voiceThing = 0;
     double myLong = 0;
     int mm = 0;
     int nn = 0;
@@ -127,6 +140,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     String name = "";
     String name2 = "";
     int a0 = 0;
+    int currentVolume = 0;
     int size = 0;
     String timeZone = "";
     String savePredictedDistance1000 = "";
@@ -151,11 +165,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     int missingSearchThreshHold = 6;
     int dd = 0;
     int ev = 0;
+    String rssiSwitch = "";
     int power = 0;
     int av = 0;
     int iv = 0;
     int zzz = 0;
+    String voiceSwitch = "";
     String fx = "";
+    boolean firstTimeVoice = false;
     private Toolbar toolbar;
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
@@ -168,8 +185,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     float precision = 0;
     int listMacAddressFlag = 0;
     int listMacAddressFlagToo = 0;
-    double [][] tempArray;
-    double [] tempArray2;
+    double[][] tempArray;
+    double[] tempArray2;
     Circle circle10;
     Circle circle11;
     Circle circle12;
@@ -195,25 +212,29 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigationView);
         navigationView.setItemIconTintList(null);
+        init(this);
         DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("calibration");
         rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (dataSnapshot.hasChild(mac) && !mac.equals("")){
+                if (dataSnapshot.hasChild(mac) && !mac.equals("")) {
                     DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("calibration").child(mac);
                     ValueEventListener eventListener = new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
-                            for(DataSnapshot ds : dataSnapshot.getChildren()) {
+                            for (DataSnapshot ds : dataSnapshot.getChildren()) {
                                 rssiUnit = Double.valueOf(ds.getKey());
                             }
                         }
+
                         @Override
-                        public void onCancelled(DatabaseError databaseError) {}
+                        public void onCancelled(DatabaseError databaseError) {
+                        }
                     };
                     ref0.addListenerForSingleValueEvent(eventListener);
                 }
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toast.makeText(getApplicationContext(), "Failed to reach Database.", Toast.LENGTH_SHORT).show();
@@ -225,12 +246,42 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
                 switch (menuItem.getItemId()) {
                     case R.id.nav_ShowRSSI:
-                        if(power == 0){
+                        whatever = 11;
+                        if (power == 0) {
                             power = 1;
+                            rssiSwitch = "on";
+                            DatabaseReference mDatabase106 = FirebaseDatabase.getInstance().getReference();
+                            mDatabase106.child("Switches").child("rssiSwitch" + mac).setValue("on");
                             menuItem.setChecked(true);
-                        } else if(power == 1){
+                        } else if (power == 1) {
                             power = 0;
+                            rssiSwitch = "off";
+                            DatabaseReference mDatabase107 = FirebaseDatabase.getInstance().getReference();
+                            mDatabase107.child("Switches").child("rssiSwitch" + mac).setValue("off");
                             menuItem.setChecked(false);
+                        }
+                        drawerLayout.closeDrawers();
+                        return true;
+                    case R.id.nav_voice:
+                        whatever = 12;
+                        if (voiceThing == 0 && !firstTimeVoice) {
+                            voiceThing = 1;
+                            voiceSwitch = "on";
+                            startRecognizing();
+                            DatabaseReference mDatabase106 = FirebaseDatabase.getInstance().getReference();
+                            mDatabase106.child("Switches").child("voiceSwitch" + mac).setValue("on");
+                            menuItem.setChecked(true);
+                        } else if (voiceThing == 1 && !firstTimeVoice) {
+                            voiceThing = 0;
+                            voiceSwitch = "off";
+                            DatabaseReference mDatabase107 = FirebaseDatabase.getInstance().getReference();
+                            mDatabase107.child("Switches").child("voiceSwitch" + mac).setValue("off");
+                            menuItem.setChecked(false);
+                            cancelRecognizing();
+                            resumeVolume();
+                        } else if(firstTimeVoice && voiceThing == 0){
+                            firstTimeVoice = false;
+                            voiceInfo();
                         }
                         drawerLayout.closeDrawers();
                         return true;
@@ -250,7 +301,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             hqandler.postDelayed(new Runnable() {
                                 @Override
                                 public void run() {
-                                  getData();
+                                    getData();
                                 }
                             }, 1000);
                         } else if (ev == 1 && !mac.equals("")) {
@@ -331,7 +382,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     case R.id.nav_ChangeNumber:
                         menuItem.setChecked(false);
                         drawerLayout.closeDrawers();
-                        if(!mac.equals("")) {
+                        if (!mac.equals("")) {
                             DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("beaconPhone").child(mac);
                             ValueEventListener eventListener = new ValueEventListener() {
                                 @Override
@@ -341,6 +392,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         fx = name2;
                                     }
                                 }
+
                                 @Override
                                 public void onCancelled(DatabaseError databaseError) {
                                 }
@@ -358,7 +410,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     }
                                 }
                             }, 500);
-                        } else if(mac.equals("")){
+                        } else if (mac.equals("")) {
                             displayMessage("You must register a beacon to use this feature!");
                         }
                         return true;
@@ -403,12 +455,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         handleri.postDelayed(new Runnable() {
                             @Override
                             public void run() {
-                                if (!mac.equals("")){
+                                if (!mac.equals("")) {
                                     firebase.child(mac).removeValue();
                                     Toast.makeText(getApplicationContext(), "Data successfully cleared! (Enabling missing beacon will update values)", Toast.LENGTH_SHORT).show();
                                 }
                             }
-                        },1000);
+                        }, 1000);
                         drawerLayout.closeDrawers();
                         return true;
                     case R.id.nav_ChangeBeacon:
@@ -427,10 +479,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     case R.id.nav_calibrate:
                         menuItem.setChecked(false);
                         drawerLayout.closeDrawers();
-                        if(!mac.equals("")) {
+                        if (!mac.equals("")) {
                             Intent myIntentp = new Intent(MapsActivity.this, recalibrate.class);
                             MapsActivity.this.startActivity(myIntentp);
-                        } else if(mac.equals("")){
+                        } else if (mac.equals("")) {
                             displayMessage("You must register a beacon to use this feature!");
                         }
                         return true;
@@ -451,6 +503,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         Log.d(TAG, String.valueOf("RSSI: -> " + RSSI));
         Log.d(TAG, "MAC = " + mac + " RSSI = " + rssi + " Latitude = " + lat + " Longitude = " + longitude + " Predicted Distance " + " WIP");
+        getVoiceCommandData();
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
@@ -476,6 +529,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         AlertDialog alert = builder100.create();
         alert.show();
     }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -486,6 +540,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         return super.onOptionsItemSelected(item);
     }
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -493,30 +548,31 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 //------------------------------------------------------------------------------------  \/ Get User Location
 
-    private void getLocationgps(){
-        locationManager=(LocationManager)getSystemService(Context.LOCATION_SERVICE);
+    private void getLocationgps() {
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         String locationProvider;
-        if(ContextCompat.checkSelfPermission(this,android.Manifest.permission.ACCESS_FINE_LOCATION)== PackageManager.PERMISSION_GRANTED){
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             List<String> providers = locationManager.getProviders(true);
-            if(providers.contains(LocationManager.GPS_PROVIDER)){
+            if (providers.contains(LocationManager.GPS_PROVIDER)) {
                 locationProvider = LocationManager.GPS_PROVIDER;
-            }else if(providers.contains(LocationManager.NETWORK_PROVIDER)){
+            } else if (providers.contains(LocationManager.NETWORK_PROVIDER)) {
                 //如果是Network
                 locationProvider = LocationManager.NETWORK_PROVIDER;
-            }else{
+            } else {
                 Toast.makeText(this, "Location provider not available.", Toast.LENGTH_SHORT).show();
-                return ;
+                return;
             }
-            Location location=locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if(location!=null){
+            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            if (location != null) {
                 showLocation(location);
-            }else{
+            } else {
                 Toast.makeText(this, "No location data.", Toast.LENGTH_SHORT).show();
             }
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,3000,0,locationListener);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000, 0, locationListener);
         }
     }
-    LocationListener locationListener=new LocationListener() {
+
+    LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
             showLocation(location);
@@ -537,8 +593,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         }
     };
-    private void showLocation(Location location){
-        String currentPosition="latitude is"+location.getLatitude()+", "+"longitude is"+location.getLongitude();
+
+    private void showLocation(Location location) {
+        String currentPosition = "latitude is" + location.getLatitude() + ", " + "longitude is" + location.getLongitude();
         precision = location.getAccuracy();
         System.out.println(currentPosition);
         lati = location.getLatitude();
@@ -547,10 +604,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("lat", String.valueOf(lati));
             jsonObject.put("long", String.valueOf(longi));
-        }catch (JSONException e){
+        } catch (JSONException e) {
         }
     }
-//------------------------------------------------------------------------------------  \/ Update Data Textviews
+
+    //------------------------------------------------------------------------------------  \/ Update Data Textviews
     public void bluetoothDataLoop() {
         getLocationgps();
         myLat = lati;
@@ -560,34 +618,34 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         runnable = new Runnable() {
             @Override
             public void run() {
-                if(flag == 999999998){
+                if (flag == 999999998) {
                     flag = 50;
                 }
-                if(flag <= 999999999) {
+                if (flag <= 999999999) {
                     updatedLocation.clear();
                     updatedDistance.clear();
                     Log.d(TAG, String.valueOf("flag = " + flag));
                     mMap.clear();
                     LatLng latLng = new LatLng(lati, longi);
-                    if (beaconInRange){
-                        double[] currentLocation = {lati,longi};
+                    if (beaconInRange) {
+                        double[] currentLocation = {lati, longi};
                         updatedLocation.add(Arrays.asList(currentLocation[0], currentLocation[1]));
-                    updatedDistance.add(predictedDistance);
-                    zValues.add(6371000*sin(Math.toRadians(lati)));
+                        updatedDistance.add(predictedDistance);
+                        zValues.add(6371000 * sin(Math.toRadians(lati)));
                     }
                     mMap.addMarker(new MarkerOptions().position(latLng).title("Your Location"));
-                    if(precision > 10){
-                        ImageView imgView = (ImageView)findViewById(R.id.attention);
-                        imgView .setVisibility(View.VISIBLE);
-                        TextView textview = (TextView)findViewById(R.id.precisionMessage);
+                    if (precision > 10) {
+                        ImageView imgView = (ImageView) findViewById(R.id.attention);
+                        imgView.setVisibility(View.VISIBLE);
+                        TextView textview = (TextView) findViewById(R.id.precisionMessage);
                         textview.setVisibility(View.VISIBLE);
                     } else {
-                        ImageView imgView = (ImageView)findViewById(R.id.attention);
-                        imgView .setVisibility(View.GONE);
-                        TextView textview = (TextView)findViewById(R.id.precisionMessage);
+                        ImageView imgView = (ImageView) findViewById(R.id.attention);
+                        imgView.setVisibility(View.GONE);
+                        TextView textview = (TextView) findViewById(R.id.precisionMessage);
                         textview.setVisibility(View.GONE);
                     }
-                    if(!mac.equals("") && beaconInRange) {
+                    if (!mac.equals("") && beaconInRange) {
                         double metersPerPx = 156543.03392 * Math.cos(lati * Math.PI / 180) / Math.pow(2, 19);
                         double Radius = (predictedDistance / metersPerPx) - 0.5;
                         CircleOptions circleOptions = (new CircleOptions()
@@ -602,31 +660,31 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     locationTv.setText(lati + "");
                     locationTv = (TextView) findViewById(R.id.longi);
                     locationTv.setText(longi + "");
-                    if(!mac.equals("")) {
+                    if (!mac.equals("")) {
                         locationTv = (TextView) findViewById(R.id.address);
                         locationTv.setText(mac + "");
                     }
                     Log.d(TAG, String.valueOf("RSSI: -> " + RSSI));
                     handler1.postDelayed(this, 4000);
-                    if(flag == 0) {
+                    if (flag == 0) {
                         Log.d(TAG, String.valueOf("flag = " + flag));
                         RSSI = (rssiUnit) - RSSI;
                         hold = 10 * locationValue;
                         RSSI = RSSI / hold;
                         RSSI = Math.pow(10, RSSI);
-                        if(mac.equals("")){
+                        if (mac.equals("")) {
                             RSSI = 0.00000;
                         }
                         predictedDistance = RSSI;
                         roundDistance();
-                        if(!mac.equals("")) {
+                        if (!mac.equals("")) {
                             locationTv = (TextView) findViewById(R.id.distance);
                             locationTv.setText("About " + predictedDistance + " Meters Away");
                         }
                         mMap.addMarker(new MarkerOptions().position(latLng).title("Your Location"));
                         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
                         mMap.animateCamera(CameraUpdateFactory.zoomTo(19));
-                        if(!mac.equals("") && beaconInRange) {
+                        if (!mac.equals("") && beaconInRange) {
                             double metersPerPx = 156543.03392 * Math.cos(lati * Math.PI / 180) / Math.pow(2, 19);
                             double Radius = (predictedDistance / metersPerPx) - 0.5;
                             CircleOptions circleOptions = (new CircleOptions()
@@ -637,9 +695,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     .strokeWidth(5));
                             myCircle = mMap.addCircle(circleOptions);
                         }
-                    }else if (indicator == 1){
+                    } else if (indicator == 1) {
                         Log.d(TAG, String.valueOf("indicator.69 = " + indicator));
-                        if(!mac.equals("")) {
+                        if (!mac.equals("")) {
                             locationTv = (TextView) findViewById(R.id.distance);
                             locationTv.setText("About " + predictedDistance + " Meters Away");
                         }
@@ -647,34 +705,34 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         mMap.animateCamera(CameraUpdateFactory.zoomTo(19));
                         indicator = 0;
 
-                    } else if (flag <= 3){
+                    } else if (flag <= 3) {
                         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
                     }
                     flag = flag + 1;
                     kk = 0;
                     nn = 0;
                     mm = 0;
-                    if(!latiLongiList.isEmpty() && ev == 1) {
+                    if (!latiLongiList.isEmpty() && ev == 1) {
                         while (kk == 0 && !latiLongiList.isEmpty() && !distanceAwayList.isEmpty()) {
                             LatLng devicePoint = new LatLng(Double.valueOf(latiLongiList.get(nn)), Double.valueOf(latiLongiList.get(nn + 1)));
                             savePredictedDistance10 = distanceAwayList.get(mm);
                             int b = 0;
                             int c = 0;
-                            while (!latiLongiList.isEmpty() && b+1 <= distanceAwayList.size()){
-                                double[] output2 = {0,0};
+                            while (!latiLongiList.isEmpty() && b + 1 <= distanceAwayList.size()) {
+                                double[] output2 = {0, 0};
                                 output2[0] = Double.valueOf(latiLongiList.get(c));
-                                output2[1] = Double.valueOf(latiLongiList.get(c+1));
-                                updatedLocation.add(Arrays.asList(output2[0],output2[1]));
+                                output2[1] = Double.valueOf(latiLongiList.get(c + 1));
+                                updatedLocation.add(Arrays.asList(output2[0], output2[1]));
                                 updatedDistance.add(Double.valueOf(distanceAwayList.get(b)));
                                 b = b + 1;
                                 c = c + 2;
                             }
-                            zValues.add(6371000*sin(Double.valueOf(latiLongiList.get(nn))));
+                            zValues.add(6371000 * sin(Double.valueOf(latiLongiList.get(nn))));
                             v = 0;
                             if (latiSaveDouble != -999999999 && longiSaveDouble != -999999999) {
-                                if(distanceAwayList.size() >= 1){
-                                    v=0;
-                                    Log.d(TAG,"updateDistanceSize1 = " + updatedDistance.size());
+                                if (distanceAwayList.size() >= 1) {
+                                    v = 0;
+                                    Log.d(TAG, "updateDistanceSize1 = " + updatedDistance.size());
                                     Log.d(TAG, "Info1: " + "updatedLocation = " + latiLongiList.get(0) + ", " + latiLongiList.get(1) + " updatedDistance = " + updatedDistance.get(v));
                                     LatLng devicePoint1010 = new LatLng(Double.valueOf(latiLongiList.get(0)), Double.valueOf(latiLongiList.get(1)));
                                     mMap.addMarker(new MarkerOptions().position(devicePoint1010).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(0) + ", " + latiLongiList.get(1)));
@@ -685,9 +743,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                             .strokeColor(Color.RED)
                                             .strokeWidth(5));
                                     circle10 = mMap.addCircle(circleOptions1010);
-                                    if(distanceAwayList.size() >= 2){
+                                    if (distanceAwayList.size() >= 2) {
                                         v = 1;
-                                        Log.d(TAG,"updateDistanceSize2 = " + updatedDistance.size());
+                                        Log.d(TAG, "updateDistanceSize2 = " + updatedDistance.size());
                                         Log.d(TAG, "Info2: " + "updatedLocation = " + latiLongiList.get(2) + ", " + latiLongiList.get(3) + " updatedDistance = " + updatedDistance.get(v));
                                         LatLng devicePoint100 = new LatLng(Double.valueOf(latiLongiList.get(2)), Double.valueOf(latiLongiList.get(3)));
                                         mMap.addMarker(new MarkerOptions().position(devicePoint100).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(2) + ", " + latiLongiList.get(3)));
@@ -698,9 +756,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                 .strokeColor(Color.RED)
                                                 .strokeWidth(5));
                                         circle11 = mMap.addCircle(circleOptions11);
-                                        if(distanceAwayList.size() >= 3){
+                                        if (distanceAwayList.size() >= 3) {
                                             v = 2;
-                                            Log.d(TAG,"updateDistanceSize3 = " + updatedDistance.size());
+                                            Log.d(TAG, "updateDistanceSize3 = " + updatedDistance.size());
                                             Log.d(TAG, "Info3: " + "updatedLocation = " + latiLongiList.get(4) + ", " + latiLongiList.get(5) + " updatedDistance = " + updatedDistance.get(v));
                                             LatLng devicePoint101 = new LatLng(Double.valueOf(latiLongiList.get(4)), Double.valueOf(latiLongiList.get(5)));
                                             mMap.addMarker(new MarkerOptions().position(devicePoint101).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(4) + ", " + latiLongiList.get(5)));
@@ -711,9 +769,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                     .strokeColor(Color.RED)
                                                     .strokeWidth(5));
                                             circle12 = mMap.addCircle(circleOptions12);
-                                            if(distanceAwayList.size() >= 4){
+                                            if (distanceAwayList.size() >= 4) {
                                                 v = 3;
-                                                Log.d(TAG,"updateDistanceSize4 = " + updatedDistance.size());
+                                                Log.d(TAG, "updateDistanceSize4 = " + updatedDistance.size());
                                                 Log.d(TAG, "Info4: " + "updatedLocation = " + latiLongiList.get(6) + ", " + latiLongiList.get(7) + " updatedDistance = " + updatedDistance.get(v));
                                                 LatLng devicePoint102 = new LatLng(Double.valueOf(latiLongiList.get(6)), Double.valueOf(latiLongiList.get(7)));
                                                 mMap.addMarker(new MarkerOptions().position(devicePoint102).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(6) + ", " + latiLongiList.get(7)));
@@ -724,10 +782,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                         .strokeColor(Color.RED)
                                                         .strokeWidth(5));
                                                 circle13 = mMap.addCircle(circleOptions13);
-                                                if(distanceAwayList.size() >= 5){
+                                                if (distanceAwayList.size() >= 5) {
                                                     v = 4;
-                                                    Log.d(TAG,"updateDistanceSize5 = " + updatedDistance.size());
-                                                    Log.d(TAG, "Info5: " + "updatedLocation = " + latiLongiList.get(8) + ", " +latiLongiList.get(9) + " updatedDistance = " + updatedDistance.get(v));
+                                                    Log.d(TAG, "updateDistanceSize5 = " + updatedDistance.size());
+                                                    Log.d(TAG, "Info5: " + "updatedLocation = " + latiLongiList.get(8) + ", " + latiLongiList.get(9) + " updatedDistance = " + updatedDistance.get(v));
                                                     LatLng devicePoint103 = new LatLng(Double.valueOf(latiLongiList.get(8)), Double.valueOf(latiLongiList.get(9)));
                                                     mMap.addMarker(new MarkerOptions().position(devicePoint103).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(8) + ", " + latiLongiList.get(9)));
                                                     CircleOptions circleOptions14 = (new CircleOptions()
@@ -737,9 +795,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                             .strokeColor(Color.RED)
                                                             .strokeWidth(5));
                                                     circle14 = mMap.addCircle(circleOptions14);
-                                                    if(distanceAwayList.size() >= 6){
+                                                    if (distanceAwayList.size() >= 6) {
                                                         v = 5;
-                                                        Log.d(TAG,"updateDistanceSize6 = " + updatedDistance.size());
+                                                        Log.d(TAG, "updateDistanceSize6 = " + updatedDistance.size());
                                                         Log.d(TAG, "Info6: " + "updatedLocation = " + latiLongiList.get(10) + ", " + latiLongiList.get(11) + " updatedDistance = " + updatedDistance.get(v));
                                                         LatLng devicePoint104 = new LatLng(Double.valueOf(latiLongiList.get(10)), Double.valueOf(latiLongiList.get(11)));
                                                         mMap.addMarker(new MarkerOptions().position(devicePoint104).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(10) + ", " + latiLongiList.get(11)));
@@ -750,9 +808,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                 .strokeColor(Color.RED)
                                                                 .strokeWidth(5));
                                                         circle15 = mMap.addCircle(circleOptions15);
-                                                        if(distanceAwayList.size() >= 7){
+                                                        if (distanceAwayList.size() >= 7) {
                                                             v = 6;
-                                                            Log.d(TAG,"updateDistanceSize7 = " + updatedDistance.size());
+                                                            Log.d(TAG, "updateDistanceSize7 = " + updatedDistance.size());
                                                             Log.d(TAG, "Info7: " + "updatedLocation = " + latiLongiList.get(12) + ", " + latiLongiList.get(13) + " updatedDistance = " + updatedDistance.get(v));
                                                             LatLng devicePoint105 = new LatLng(Double.valueOf(latiLongiList.get(12)), Double.valueOf(latiLongiList.get(13)));
                                                             mMap.addMarker(new MarkerOptions().position(devicePoint105).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(12) + ", " + latiLongiList.get(13)));
@@ -763,9 +821,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                     .strokeColor(Color.RED)
                                                                     .strokeWidth(5));
                                                             circle16 = mMap.addCircle(circleOptions16);
-                                                            if(distanceAwayList.size() >= 8){
+                                                            if (distanceAwayList.size() >= 8) {
                                                                 v = 7;
-                                                                Log.d(TAG,"updateDistanceSize8 = " + updatedDistance.size());
+                                                                Log.d(TAG, "updateDistanceSize8 = " + updatedDistance.size());
                                                                 Log.d(TAG, "Info8: " + "updatedLocation = " + latiLongiList.get(14) + ", " + latiLongiList.get(15) + " updatedDistance = " + updatedDistance.get(v));
                                                                 LatLng devicePoint106 = new LatLng(Double.valueOf(latiLongiList.get(14)), Double.valueOf(latiLongiList.get(15)));
                                                                 mMap.addMarker(new MarkerOptions().position(devicePoint106).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(14) + ", " + latiLongiList.get(15)));
@@ -776,9 +834,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                         .strokeColor(Color.RED)
                                                                         .strokeWidth(5));
                                                                 circle17 = mMap.addCircle(circleOptions17);
-                                                                if(distanceAwayList.size() >= 9){
+                                                                if (distanceAwayList.size() >= 9) {
                                                                     v = 8;
-                                                                    Log.d(TAG,"updateDistanceSize9 = " + updatedDistance.size());
+                                                                    Log.d(TAG, "updateDistanceSize9 = " + updatedDistance.size());
                                                                     Log.d(TAG, "Info9: " + "updatedLocation = " + latiLongiList.get(16) + ", " + latiLongiList.get(17) + " updatedDistance = " + updatedDistance.get(v));
                                                                     LatLng devicePoint107 = new LatLng(Double.valueOf(latiLongiList.get(16)), Double.valueOf(latiLongiList.get(17)));
                                                                     mMap.addMarker(new MarkerOptions().position(devicePoint107).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(16) + ", " + latiLongiList.get(17)));
@@ -789,9 +847,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                             .strokeColor(Color.RED)
                                                                             .strokeWidth(5));
                                                                     circle18 = mMap.addCircle(circleOptions18);
-                                                                    if(distanceAwayList.size() >= 10){
+                                                                    if (distanceAwayList.size() >= 10) {
                                                                         v = 9;
-                                                                        Log.d(TAG,"updateDistanceSize10 = " + updatedDistance.size());
+                                                                        Log.d(TAG, "updateDistanceSize10 = " + updatedDistance.size());
                                                                         Log.d(TAG, "Info10: " + "updatedLocation = " + latiLongiList.get(18) + ", " + latiLongiList.get(19) + " updatedDistance = " + updatedDistance.get(v));
                                                                         LatLng devicePoint108 = new LatLng(Double.valueOf(latiLongiList.get(18)), Double.valueOf(latiLongiList.get(19)));
                                                                         mMap.addMarker(new MarkerOptions().position(devicePoint108).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(18) + ", " + latiLongiList.get(19)));
@@ -802,9 +860,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                                 .strokeColor(Color.RED)
                                                                                 .strokeWidth(5));
                                                                         circle19 = mMap.addCircle(circleOptions19);
-                                                                        if(distanceAwayList.size() >= 11){
+                                                                        if (distanceAwayList.size() >= 11) {
                                                                             v = 10;
-                                                                            Log.d(TAG,"updateDistanceSize11 = " + updatedDistance.size());
+                                                                            Log.d(TAG, "updateDistanceSize11 = " + updatedDistance.size());
                                                                             Log.d(TAG, "Info11: " + "updatedLocation = " + latiLongiList.get(20) + ", " + latiLongiList.get(21) + " updatedDistance = " + updatedDistance.get(v));
                                                                             LatLng devicePoint109 = new LatLng(Double.valueOf(latiLongiList.get(20)), Double.valueOf(latiLongiList.get(21)));
                                                                             mMap.addMarker(new MarkerOptions().position(devicePoint109).title("Your Beacon is " + distanceAwayList.get(v) + " Meters away from " + latiLongiList.get(20) + ", " + latiLongiList.get(21)));
@@ -826,24 +884,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         }
                                     }
                                 }
-                                if(nn+2 > latiLongiList.size()-1){
+                                if (nn + 2 > latiLongiList.size() - 1) {
                                     kk = 1;
                                     tempArray = new double[updatedLocation.size()][updatedLocation.size()];
                                     int i = 0;
-                                    while (i <= updatedLocation.size() - 1 && nn+2 > latiLongiList.size()-1) {
+                                    while (i <= updatedLocation.size() - 1 && nn + 2 > latiLongiList.size() - 1) {
                                         tempArray[i][0] = updatedLocation.get(i).get(0);
                                         tempArray[i][1] = updatedLocation.get(i).get(1);
-                                        Log.d(TAG, "convert#1-1: "+updatedLocation.get(i).get(0));
-                                        Log.d(TAG, "convert#1-2: "+updatedLocation.get(i).get(1));
-                                        Log.d(TAG, "convert#1-3: "+tempArray.length);
+                                        Log.d(TAG, "convert#1-1: " + updatedLocation.get(i).get(0));
+                                        Log.d(TAG, "convert#1-2: " + updatedLocation.get(i).get(1));
+                                        Log.d(TAG, "convert#1-3: " + tempArray.length);
                                         i = i + 1;
                                     }
                                     tempArray2 = new double[updatedDistance.size()];
                                     int j = 0;
-                                    while (j <= updatedDistance.size() - 1 && nn+2 > latiLongiList.size()-1) {
+                                    while (j <= updatedDistance.size() - 1 && nn + 2 > latiLongiList.size() - 1) {
                                         tempArray2[j] = updatedDistance.get(j);
-                                        Log.d(TAG, "convert#2-1: "+updatedDistance.get(j));
-                                        Log.d(TAG, "convert#2-2: "+tempArray2.length);
+                                        Log.d(TAG, "convert#2-1: " + updatedDistance.get(j));
+                                        Log.d(TAG, "convert#2-2: " + tempArray2.length);
                                         j = j + 1;
                                     }
                                     final Handler handler = new Handler();
@@ -851,17 +909,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         @Override
                                         public void run() {
                                             if (tempArray.length > 1 && tempArray2.length > 1) {
-                                                Log.d(TAG,"Trilateration Area");
-                                               com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver trilaterationSolver = new com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver(tempArray, true);
+                                                Log.d(TAG, "Trilateration Area");
+                                                com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver trilaterationSolver = new com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver(tempArray, true);
                                                 double[] calculatedPosition = trilaterationSolver.localize(tempArray2);
                                                 LatLng latllng = new LatLng(calculatedPosition[0], calculatedPosition[1]);
-                                                Log.d(TAG, "TrilaterationPosition (lat): "+calculatedPosition[0]);
-                                                Log.d(TAG, "TrilaterationPosition (long): "+ calculatedPosition[1]);
+                                                Log.d(TAG, "TrilaterationPosition (lat): " + calculatedPosition[0]);
+                                                Log.d(TAG, "TrilaterationPosition (long): " + calculatedPosition[1]);
                                                 double ten = (calculatedPosition[0]);
                                                 double eleven = (calculatedPosition[1]);
-                                                mMap.addMarker(new MarkerOptions().position(latllng).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)).title("You are " + myLocationToPredicted(myLat,myLong,ten,eleven) + " meters away from beacon @ " + ten + ", " + eleven));
+                                                mMap.addMarker(new MarkerOptions().position(latllng).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)).title("You are " + myLocationToPredicted(myLat, myLong, ten, eleven) + " meters away from beacon @ " + ten + ", " + eleven));
                                                 tempArray = null;
                                                 tempArray2 = null;
+                                                DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("Trilaterated Point");
+                                                rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                                                    @Override
+                                                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                                        rootRef.child("lat"+mac).setValue(ten);
+                                                        rootRef.child("long"+mac).setValue(eleven);
+                                                        rootRef.child("distance"+mac).setValue(myLocationToPredicted(myLat, myLong, ten, eleven));
+
+                                                    }
+
+                                                    @Override
+                                                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                                                        Log.d(TAG, "Failed to get missingSwitch state.");
+                                                    }
+                                                });
                                             }
 
                                         }
@@ -876,20 +949,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 kk = 1;
                                 tempArray = new double[updatedLocation.size()][updatedLocation.size()];
                                 int i = 0;
-                                while (i <= updatedLocation.size() - 1 && nn+2 > latiLongiList.size()-1) {
+                                while (i <= updatedLocation.size() - 1 && nn + 2 > latiLongiList.size() - 1) {
                                     tempArray[i][0] = updatedLocation.get(i).get(0);
                                     tempArray[i][1] = updatedLocation.get(i).get(1);
-                                    Log.d(TAG, "convert#1-1: "+updatedLocation.get(i).get(0));
-                                    Log.d(TAG, "convert#1-2: "+updatedLocation.get(i).get(1));
-                                    Log.d(TAG, "convert#1-3: "+tempArray.length);
+                                    Log.d(TAG, "convert#1-1: " + updatedLocation.get(i).get(0));
+                                    Log.d(TAG, "convert#1-2: " + updatedLocation.get(i).get(1));
+                                    Log.d(TAG, "convert#1-3: " + tempArray.length);
                                     i = i + 1;
                                 }
                                 tempArray2 = new double[updatedDistance.size()];
                                 int j = 0;
-                                while (j <= updatedDistance.size() - 1 && nn+2 > latiLongiList.size()-1) {
+                                while (j <= updatedDistance.size() - 1 && nn + 2 > latiLongiList.size() - 1) {
                                     tempArray2[j] = updatedDistance.get(j);
-                                    Log.d(TAG, "convert#2-1: "+updatedDistance.get(j));
-                                    Log.d(TAG, "convert#2-2: "+tempArray2.length);
+                                    Log.d(TAG, "convert#2-1: " + updatedDistance.get(j));
+                                    Log.d(TAG, "convert#2-2: " + tempArray2.length);
                                     j = j + 1;
                                 }
                                 final Handler handler = new Handler();
@@ -897,17 +970,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     @Override
                                     public void run() {
                                         if (tempArray.length > 1 && tempArray2.length > 1) {
-                                            Log.d(TAG,"Trilateration Area");
+                                            Log.d(TAG, "Trilateration Area");
                                             com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver trilaterationSolver = new com.example.emilysumpena.myapplication.trilateration.src.main.java.TrilaterationSolver(tempArray, true);
                                             double[] calculatedPosition = trilaterationSolver.localize(tempArray2);
                                             LatLng latllng = new LatLng(calculatedPosition[0], calculatedPosition[1]);
-                                            Log.d(TAG, "TrilaterationPosition (lat): "+calculatedPosition[0]);
-                                            Log.d(TAG, "TrilaterationPosition (long): "+ calculatedPosition[1]);
+                                            Log.d(TAG, "TrilaterationPosition (lat): " + calculatedPosition[0]);
+                                            Log.d(TAG, "TrilaterationPosition (long): " + calculatedPosition[1]);
                                             double ten = (calculatedPosition[0]);
                                             double eleven = (calculatedPosition[1]);
-                                            mMap.addMarker(new MarkerOptions().position(latllng).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)).title("You are " + myLocationToPredicted(myLat,myLong,ten,eleven) + " meters away from beacon @ " + ten + ", " + eleven));
+                                            mMap.addMarker(new MarkerOptions().position(latllng).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)).title("You are " + myLocationToPredicted(myLat, myLong, ten, eleven) + " meters away from beacon @ " + ten + ", " + eleven));
                                             tempArray = null;
                                             tempArray2 = null;
+                                            DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("Trilaterated Point");
+                                            rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                                                @Override
+                                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                                    rootRef.child("lat"+mac).setValue(ten);
+                                                    rootRef.child("long"+mac).setValue(eleven);
+                                                    rootRef.child("distance"+mac).setValue(myLocationToPredicted(myLat, myLong, ten, eleven));
+
+                                                }
+
+                                                @Override
+                                                public void onCancelled(@NonNull DatabaseError databaseError) {
+                                                    Log.d(TAG, "Failed to get missingSwitch state.");
+                                                }
+                                            });
                                         }
                                     }
                                 }, 1000);
@@ -917,12 +1005,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             }
 
 
-                                }
+                        }
 
                     }
-                    if(anonymousFound == 1){
+                    if (anonymousFound == 1) {
                         LatLng latllng = new LatLng(latiSave12, longiSave12);
-                        mMap.addMarker(new MarkerOptions().position(latllng).title("An anonymous iBeacon is " + savePredictedDistance12 + " away from "+ latiSave12+ ", " + longiSave12));
+                        mMap.addMarker(new MarkerOptions().position(latllng).title("An anonymous iBeacon is " + savePredictedDistance12 + " away from " + latiSave12 + ", " + longiSave12));
                         CircleOptions circleOptions3 = (new CircleOptions()
                                 .center(new LatLng(latiSave12, longiSave12))   //set center
                                 .radius(savePredictedDistance12)   //set radius in meters
@@ -932,8 +1020,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         myCircle3 = mMap.addCircle(circleOptions3);
                     }
                 }
-                Log.d(TAG,"What is the listMacAddressFlagToo? " + listMacAddressFlagToo);
-                if(ccounter >= 5 && ev == 1) {
+                Log.d(TAG, "What is the listMacAddressFlagToo? " + listMacAddressFlagToo);
+                if (ccounter >= 5 && ev == 1) {
                     ccounter = 0;
                     final Handler handlerrr = new Handler();
                     handlerrr.postDelayed(new Runnable() {
@@ -951,10 +1039,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     ccounter = ccounter + 1;
                     Log.d(TAG, "ccounter = " + ccounter);
                 }
-        }
-    };
+            }
+        };
         handler.postDelayed(runnable, 100);
-}
+    }
+
     public Handler handler = new Handler() {
 
         @Override
@@ -989,18 +1078,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         errorkiller = 0;
                         blueflag = 5;
                         RSSI = Double.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI));
-                        Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI))+ "<- WHat came out     What's in variable -> " + RSSI);
+                        Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI)) + "<- WHat came out     What's in variable -> " + RSSI);
                         RSSI = (rssiUnit) - RSSI;
-                        hold = 10*locationValue;
+                        hold = 10 * locationValue;
                         RSSI = RSSI / hold;
-                        RSSI = Math.pow(10,RSSI);
+                        RSSI = Math.pow(10, RSSI);
                         predictedDistance = RSSI;
-                        if(mac.equals("")){
+                        if (mac.equals("")) {
                             RSSI = 0.000;
                         }
                         roundDistance();
                         TextView locationTv = (TextView) findViewById(R.id.distance);
-                        locationTv.setText("About "+ predictedDistance + " Meters Away");
+                        locationTv.setText("About " + predictedDistance + " Meters Away");
                         flag = 1;
                         indicator = 1;
                         Log.d(TAG, String.valueOf("flag set to " + flag + " indicator set to " + indicator));
@@ -1021,6 +1110,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
     };
+
     public void BlueToothDiscovery() {
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
@@ -1046,13 +1136,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
     }
+
     public void BluetoothLoop() {
         System.out.println("Very beginning of BluetoothLoop");
         final Handler handler1 = new Handler();
         runnable = new Runnable() {
             @Override
             public void run() {
-                if(blueflag == 4) {
+                if (blueflag == 4) {
                     Toast.makeText(getApplicationContext(), "Could not find the device! Make sure bluetooth and the device is turned on and that you device can detect it.", Toast.LENGTH_SHORT).show();
                     blueflag = 5;
                     TextView locationTv = (TextView) findViewById(R.id.distance);
@@ -1060,7 +1151,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     flag = 1;
                     indicator = 1;
                 }
-                if(blueflag <= 3) {
+                if (blueflag <= 3) {
                     System.out.println("public void run()");
                     Toast.makeText(getApplicationContext(), "Refreshing... Please do NOT press button again!", Toast.LENGTH_LONG).show();
                     BlueToothDiscovery();
@@ -1088,20 +1179,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     };
-    double roundDistance()
-    {
+
+    double roundDistance() {
         DecimalFormat twoDForm = new DecimalFormat("##.##");
         predictedDistance = Double.valueOf(twoDForm.format(predictedDistance));
         return Double.valueOf(twoDForm.format(predictedDistance));
     }
-    double roundDistance2()
-    {
+
+    double roundDistance2() {
         DecimalFormat twoDForm = new DecimalFormat("##.##");
         savePredictedDistance69 = Double.valueOf(twoDForm.format(savePredictedDistance69));
         return Double.valueOf(twoDForm.format(savePredictedDistance69));
     }
-    double roundDistance3()
-    {
+
+    double roundDistance3() {
         DecimalFormat twoDForm = new DecimalFormat("##.##");
         savePredictedDistance12 = Double.valueOf(twoDForm.format(savePredictedDistance12));
         return Double.valueOf(twoDForm.format(savePredictedDistance12));
@@ -1134,22 +1225,22 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         autoCounter = 0;
                         errorkiller2 = 0;
                         RSSI = Double.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI));
-                        if(power == 1) {
+                        if (power == 1 && rssiSwitch.equals("on")) {
                             displayMessage("RSSI = " + RSSI);
                         }
-                        Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI))+ "<- WHat came out     What's in variable -> " + RSSI);
+                        Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI)) + "<- WHat came out     What's in variable -> " + RSSI);
                         RSSI = (rssiUnit) - RSSI;
-                        hold = 10*locationValue;
+                        hold = 10 * locationValue;
                         RSSI = RSSI / hold;
-                        RSSI = Math.pow(10,RSSI);
+                        RSSI = Math.pow(10, RSSI);
                         predictedDistance = RSSI;
                         roundDistance();
                         TextView locationTv = (TextView) findViewById(R.id.distance);
-                        locationTv.setText("About "+ predictedDistance + " Meters Away");
+                        locationTv.setText("About " + predictedDistance + " Meters Away");
                         flag = 1;
                         indicator = 1;
                         Log.d(TAG, String.valueOf("flag set to " + flag + " indicator set to " + indicator));
-                        if(!beaconInRange) {
+                        if (!beaconInRange) {
                             latiSave = lati;
                             longiSave = longi;
                             beaconInRange = true;
@@ -1172,6 +1263,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
     };
+
     public void BlueToothDiscoveryy() {
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
@@ -1196,6 +1288,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
     }
+
     public void autoSearch() {
         System.out.println("Very beginning of BluetoothLoop");
         final Handler handler1 = new Handler();
@@ -1208,7 +1301,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     handler1.postDelayed(this, 5000);
                     System.out.println("BlueToothDiscovery again");
                 }
-                if(switchOn && autoCounter >= autoThreshHold){
+                if (switchOn && autoCounter >= autoThreshHold) {
                     TextView locationTv = (TextView) findViewById(R.id.distance);
                     locationTv.setText("Unknown/Beacon not in Range");
                     autoCounter = 0;
@@ -1240,14 +1333,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //------------------------------------------------------------   \/ Notifications when beacon detected by OWN device.
 
-    public void notificationFound(){
-        String subject="TrackBeacon-Beacon Found!";
-        String body= "iBeacon was detected at MyLocation: " + latiSave + ", " + longiSave+ ", Est. Distance: " + savePredictedDistance;
+    public void notificationFound() {
+        String subject = "TrackBeacon-Beacon Found!";
+        String body = "iBeacon was detected at MyLocation: " + latiSave + ", " + longiSave + ", Est. Distance: " + savePredictedDistance;
         int mNotificationId = 0;
         String latSave = String.valueOf(latiSave);
         String longSave = String.valueOf(longiSave);
         String savedPredictedDistance = String.valueOf(savePredictedDistance);
-        NotificationManager notif=(NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notif = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.look)
                 .setContentTitle(subject)
@@ -1257,12 +1350,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .setAutoCancel(true);
         d = "Reappeared";
         Calendar cd = Calendar.getInstance();
-        System.out.println("Current time => "+cd.getTime());
+        System.out.println("Current time => " + cd.getTime());
         SimpleDateFormat dd = new SimpleDateFormat("HH:mm");
         String saveTime = dd.format(cd.getTime());
         Date c = Calendar.getInstance().getTime();
         SimpleDateFormat df = new SimpleDateFormat("MMM/dd/yyyy");
-        String saveDate  = df.format(c);
+        String saveDate = df.format(c);
         deviceTimeZone = TimeZone.getDefault().getDisplayName();
         editor = settinggs.edit();
         editor.putString("latiSave", latSave);
@@ -1270,8 +1363,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         editor.putString("saveDate", saveDate);
         editor.putString("longiSave", longSave);
         editor.putString("savedPredictedDistance", savedPredictedDistance);
-        editor.putString("deviceTimeZone",deviceTimeZone);
-        editor.putString("mac",mac);
+        editor.putString("deviceTimeZone", deviceTimeZone);
+        editor.putString("mac", mac);
         editor.putString("d", d);
         editor.commit();
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
@@ -1283,14 +1376,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mBuilder.setAutoCancel(true);
         mNotifyMgr.notify(mNotificationId, mBuilder.build());
     }
-    public void notificationLost(){
+
+    public void notificationLost() {
         int mNotificationId = 0;
-        String subjject="TrackBeacon-Beacon Lost!";
-        String bodyy= "iBeacon's last sighting was at MyLocation: " + latiSave + ", " + longiSave+", Est. Distance: " + savePredictedDistance;
+        String subjject = "TrackBeacon-Beacon Lost!";
+        String bodyy = "iBeacon's last sighting was at MyLocation: " + latiSave + ", " + longiSave + ", Est. Distance: " + savePredictedDistance;
         String latSave = String.valueOf(latiSave);
         String longSave = String.valueOf(longiSave);
         String savedPredictedDistance = String.valueOf(savePredictedDistance);
-        NotificationManager notif=(NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notif = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.look)
                 .setContentTitle(subjject)
@@ -1300,12 +1394,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .setAutoCancel(true);
         d = "Disappeared";
         Calendar cd = Calendar.getInstance();
-        System.out.println("Current time => "+cd.getTime());
+        System.out.println("Current time => " + cd.getTime());
         SimpleDateFormat dd = new SimpleDateFormat("HH:mm");
         String saveTime = dd.format(cd.getTime());
         Date c = Calendar.getInstance().getTime();
         SimpleDateFormat df = new SimpleDateFormat("MMM/dd/yyyy");
-        String saveDate  = df.format(c);
+        String saveDate = df.format(c);
         deviceTimeZone = TimeZone.getDefault().getDisplayName();
         editor = settinggs.edit();
         editor.putString("latiSave", latSave);
@@ -1313,8 +1407,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         editor.putString("saveDate", saveDate);
         editor.putString("longiSave", longSave);
         editor.putString("savedPredictedDistance", savedPredictedDistance);
-        editor.putString("deviceTimeZone",deviceTimeZone);
-        editor.putString("mac",mac);
+        editor.putString("deviceTimeZone", deviceTimeZone);
+        editor.putString("mac", mac);
         editor.putString("d", d);
         editor.commit();
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
@@ -1351,31 +1445,33 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //------------------------------------------------------------   \/ Save beacon MAC Address to Firebase Database
 
-    public void saveMac(String beaconID){
+    public void saveMac(String beaconID) {
         Log.d(TAG, "checkRssiDatabase reached");
         DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("beaconPhone").child(mac);
         ValueEventListener eventListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                for(DataSnapshot ds : dataSnapshot.getChildren()) {
+                for (DataSnapshot ds : dataSnapshot.getChildren()) {
                     name2 = ds.getKey();
                     Log.d(TAG, "name2 = " + name2);
                     DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
                     mDatabase.child("MacIDs").child(beaconID).child(name2).setValue("");
                 }
             }
+
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(DatabaseError databaseError) {
+            }
         };
         ref0.addListenerForSingleValueEvent(eventListener);
     }
 
     //------------------------------------------------------------  \/ Use of server to save states of switches
 
-    public void getState(String AutoOrMissingOrSearch){
-        if(AutoOrMissingOrSearch.equals("auto")){
+    public void getState(String AutoOrMissingOrSearchorRSSIorVoice) {
+        if (AutoOrMissingOrSearchorRSSIorVoice.equals("auto")) {
             DatabaseReference mDatabase1 = FirebaseDatabase.getInstance().getReference();
-            DatabaseReference mRSSI3 = mDatabase1.child("Switches").child("autoSwitch"+mac);
+            DatabaseReference mRSSI3 = mDatabase1.child("Switches").child("autoSwitch" + mac);
             mRSSI3.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1389,14 +1485,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d(TAG, "369autoSwitch = " + autoSwitch);
                     }
                 }
+
                 @Override
                 public void onCancelled(@NonNull DatabaseError databaseError) {
-                    Log.d(TAG,"Failed to get autoSwitch state.");
+                    Log.d(TAG, "Failed to get autoSwitch state.");
                 }
             });
-        } else if(AutoOrMissingOrSearch.equals("missing")){
+        } else if (AutoOrMissingOrSearchorRSSIorVoice.equals("missing")) {
             DatabaseReference mDatabase2 = FirebaseDatabase.getInstance().getReference();
-            DatabaseReference mRSSI1 = mDatabase2.child("Switches").child("missingSwitch"+mac);
+            DatabaseReference mRSSI1 = mDatabase2.child("Switches").child("missingSwitch" + mac);
             mRSSI1.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1416,9 +1513,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Log.d(TAG, "Failed to get missingSwitch state.");
                 }
             });
-        } else if(AutoOrMissingOrSearch.equals("search")){
+        } else if (AutoOrMissingOrSearchorRSSIorVoice.equals("search")) {
             DatabaseReference mDatabase5 = FirebaseDatabase.getInstance().getReference();
-            DatabaseReference mRSSI5 = mDatabase5.child("Switches").child("missingSearch"+mac);
+            DatabaseReference mRSSI5 = mDatabase5.child("Switches").child("missingSearch" + mac);
             mRSSI5.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -1438,16 +1535,56 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Log.d(TAG, "Failed to get missingSwitch state.");
                 }
             });
+        } else if (AutoOrMissingOrSearchorRSSIorVoice.equals("RSSI")) {
+            DatabaseReference mDatabase22 = FirebaseDatabase.getInstance().getReference();
+            DatabaseReference mRSSI22 = mDatabase22.child("Switches");
+            mRSSI22.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.hasChild("rssiSwitch" + mac)) {
+                        rssiSwitch = dataSnapshot.child("rssiSwitch" + mac).getValue(String.class);
+                    } else {
+                        mDatabase22.child("Switches").child("rssiSwitch" + mac).setValue("off");
+                        rssiSwitch = "off";
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    Log.d(TAG, "Failed to get missingSwitch state.");
+                }
+            });
+        } else if (AutoOrMissingOrSearchorRSSIorVoice.equals("voice")) {
+            DatabaseReference mDatabase22 = FirebaseDatabase.getInstance().getReference();
+            DatabaseReference mRSSI22 = mDatabase22.child("Switches");
+            mRSSI22.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.hasChild("voiceSwitch" + mac)) {
+                        voiceSwitch = dataSnapshot.child("voiceSwitch" + mac).getValue(String.class);
+                    } else {
+                        //mDatabase22.child("Switches").child("voiceSwitch" + mac).setValue("off");
+                        voiceSwitch = "off";
+                        firstTimeVoice = true;
+
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    Log.d(TAG, "Failed to get missingSwitch state.");
+                }
+            });
         }
     }
     //----------------------------------------------------------  \/ More use of server to save state of switch.
 
-    public void switchChildDetector(){
+    public void switchChildDetector() {
         DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("Switches");
         rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (dataSnapshot.hasChild("missingSwitch" + mac)){
+                if (dataSnapshot.hasChild("missingSwitch" + mac)) {
                     missingSwitchFlag = true;
                 }
                 if (dataSnapshot.hasChild("autoSwitch" + mac)) {
@@ -1455,9 +1592,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
                 if (dataSnapshot.hasChild("missingSearch" + mac)) {
                     missingSearchFlag = true;
-                } else if (!dataSnapshot.hasChild("autoSwitch" + mac)){
+                } else if (!dataSnapshot.hasChild("autoSwitch" + mac)) {
                     autoSwitchFlag = false;
-                } else if (!dataSnapshot.hasChild("missingSwitch" + mac)){
+                } else if (!dataSnapshot.hasChild("missingSwitch" + mac)) {
                     missingSwitchFlag = false;
                 } else if (!dataSnapshot.hasChild("missingSearch" + mac)) {
                     missingSearchFlag = false;
@@ -1474,14 +1611,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     //----------------------------------------------------------------------  \/ Missing Search
 
     public void BblueToothDiscovery() {
-        if(switchOn69) {
+        if (switchOn69) {
             BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
             if (mBluetoothAdapter == null) {
                 // Device does not support Bluetooth
                 Log.d(TAG, "Device does not support Bluetooth");
                 Toast.makeText(getApplicationContext(), "Your device does not support bluetooth!", Toast.LENGTH_LONG).show();
                 flag = 5;
-            } else if(switchOn69) {
+            } else if (switchOn69) {
                 Log.d(TAG, "Bluetooth Supported");
                 errorkiller69 = 1;
                 // 不做提示，强行打开
@@ -1499,161 +1636,165 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
     }
+
     private BroadcastReceiver mmmReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive (Context context, Intent intent){   ////
-                Log.d(TAG, "2.0jj switchOn69 = " + switchOn69);
-                if(switchOn69){
-            autoCounter69 = autoCounter69 + 1;
-            if (autoCounter69 >= missingSearchThreshHold) {
-                autoCounter69 = missingSearchThreshHold;
-            }
-            Log.d(TAG, "2.0jj 10autoCounter 69 = " + autoCounter69);
-            Log.d(TAG, "onReceive");
-            String action = intent.getAction();
-            String temp = "";
-            Log.d(TAG, "ACTION = " + action);
+        @Override
+        public void onReceive(Context context, Intent intent) {   ////
+            Log.d(TAG, "2.0jj switchOn69 = " + switchOn69);
+            if (switchOn69) {
+                autoCounter69 = autoCounter69 + 1;
+                if (autoCounter69 >= missingSearchThreshHold) {
+                    autoCounter69 = missingSearchThreshHold;
+                }
+                Log.d(TAG, "2.0jj 10autoCounter 69 = " + autoCounter69);
+                Log.d(TAG, "onReceive");
+                String action = intent.getAction();
+                String temp = "";
+                Log.d(TAG, "ACTION = " + action);
 
-            final Handler handler100000 = new Handler();
-            handler100000.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (macAddressList.size() == 0) {    ////
-                        Log.d(TAG, "nullCounter = " + nullCounter);
-                        autoCounter69 = 0;
-                        macAddressList.clear();
-                        checkMissing();
-                        if (nullCounter >= 6) {
-                            nullCounter = 0;
+                final Handler handler100000 = new Handler();
+                handler100000.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (macAddressList.size() == 0) {    ////
+                            Log.d(TAG, "nullCounter = " + nullCounter);
+                            autoCounter69 = 0;
+                            macAddressList.clear();
+                            checkMissing();
+                            if (nullCounter >= 6) {
+                                nullCounter = 0;
+                            }
+                            nullCounter = nullCounter + 1;
                         }
-                        nullCounter = nullCounter + 1;
                     }
-                    }
-                    }, 700);
+                }, 700);
 
-            if (BluetoothDevice.ACTION_FOUND.equals(action) && switchOn69 && macAddressList.size() != 0) {
-                Log.d(TAG, "ACTION = bluetooth device");
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                if (device.getBondState() == BluetoothDevice.BOND_BONDED) {    //显示已配对设备
-                    Log.d(TAG, "device.getBondState == Bluetooth Device");
-                    System.out.println("\n" + device.getName() + "==>" + device.getAddress() + "\n");
-                } else if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    temp = temp + "\n" + device.getName() + "==>" + device.getAddress() + " " + intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI);
-                    //mTextMessage2.setText("\n"+device.getName()+"==>"+device.getAddress()+"==> " + intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI ));
-                    while (zzz + 1 <= macAddressList.size() && macAddressList.size() != 0 && looploop < 4){
-                        Log.d(TAG, "zzz = " + zzz);
-                        Log.d(TAG, "zzzmacAddressList.size = " + macAddressList.size());
-                        Log.d(TAG, "zzzmacAddressList.get(" + zzz +") = " + macAddressList.get(zzz));
-                        Log.d(TAG, "zzzLooploop = " + looploop);
-                        Log.d(TAG, "zzzDevice.getAddress = " + device.getAddress());
-                    if (device.getAddress().equals(macAddressList.get(zzz)) && errorkiller69 == 1) {
-                        getLocationgps();
-                        autoCounter69 = 0;
-                        errorkiller69 = 0;
-                        nullCounter = 0;
-                        macSave = macAddressList.get(zzz);
-                        RSSI = Double.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI));
-                        if(power == 1) {
-                            displayMessage("RSSI = " + RSSI);
-                        }
-                        Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI)) + "<- WHat came out     What's in variable -> " + RSSI);
-                        DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("calibration");
-                        rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                if (dataSnapshot.hasChild(macSave)){
-                                    DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("calibration").child(macSave);
-                                    ValueEventListener eventListener = new ValueEventListener() {
-                                        @Override
-                                        public void onDataChange(DataSnapshot dataSnapshot) {
-                                            for(DataSnapshot ds : dataSnapshot.getChildren()) {
-                                                calibratedUnit = Double.valueOf(ds.getKey());
-                                                Log.d(TAG, "calibratedUnit = " + Double.valueOf(ds.getKey()));
-                                            }
+                if (BluetoothDevice.ACTION_FOUND.equals(action) && switchOn69 && macAddressList.size() != 0) {
+                    Log.d(TAG, "ACTION = bluetooth device");
+                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    if (device.getBondState() == BluetoothDevice.BOND_BONDED) {    //显示已配对设备
+                        Log.d(TAG, "device.getBondState == Bluetooth Device");
+                        System.out.println("\n" + device.getName() + "==>" + device.getAddress() + "\n");
+                    } else if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
+                        temp = temp + "\n" + device.getName() + "==>" + device.getAddress() + " " + intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI);
+                        //mTextMessage2.setText("\n"+device.getName()+"==>"+device.getAddress()+"==> " + intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI ));
+                        while (zzz + 1 <= macAddressList.size() && macAddressList.size() != 0 && looploop < 4) {
+                            Log.d(TAG, "zzz = " + zzz);
+                            Log.d(TAG, "zzzmacAddressList.size = " + macAddressList.size());
+                            Log.d(TAG, "zzzmacAddressList.get(" + zzz + ") = " + macAddressList.get(zzz));
+                            Log.d(TAG, "zzzLooploop = " + looploop);
+                            Log.d(TAG, "zzzDevice.getAddress = " + device.getAddress());
+                            if (device.getAddress().equals(macAddressList.get(zzz)) && errorkiller69 == 1) {
+                                getLocationgps();
+                                autoCounter69 = 0;
+                                errorkiller69 = 0;
+                                nullCounter = 0;
+                                macSave = macAddressList.get(zzz);
+                                RSSI = Double.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI));
+                                if (power == 1 && rssiSwitch.equals("on")) {
+                                    displayMessage("RSSI = " + RSSI);
+                                }
+                                Log.d(TAG, String.valueOf(intent.getExtras().getShort(BluetoothDevice.EXTRA_RSSI)) + "<- WHat came out     What's in variable -> " + RSSI);
+                                DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("calibration");
+                                rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                        if (dataSnapshot.hasChild(macSave)) {
+                                            DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("calibration").child(macSave);
+                                            ValueEventListener eventListener = new ValueEventListener() {
+                                                @Override
+                                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                                    for (DataSnapshot ds : dataSnapshot.getChildren()) {
+                                                        calibratedUnit = Double.valueOf(ds.getKey());
+                                                        Log.d(TAG, "calibratedUnit = " + Double.valueOf(ds.getKey()));
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void onCancelled(DatabaseError databaseError) {
+                                                }
+                                            };
+                                            ref0.addListenerForSingleValueEvent(eventListener);
+                                        } else if (!dataSnapshot.hasChild(macSave)) {
+                                            Log.d(TAG, "calibratedUnit is not in Database!");
+                                            calibratedUnit = -69.0;
                                         }
-                                        @Override
-                                        public void onCancelled(DatabaseError databaseError) {}
-                                    };
-                                    ref0.addListenerForSingleValueEvent(eventListener);
-                                } else if (!dataSnapshot.hasChild(macSave)) {
-                                    Log.d(TAG,"calibratedUnit is not in Database!");
-                                    calibratedUnit = -69.0;
+                                    }
+
+                                    @Override
+                                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                                        Toast.makeText(getApplicationContext(), "Failed to save phone number.", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                                final Handler handler = new Handler();
+                                handler.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Log.d(TAG, "calibratedUnit = " + calibratedUnit);
+                                        RSSI = (calibratedUnit) - RSSI;
+                                        hold = 10 * locationValue;
+                                        RSSI = RSSI / hold;
+                                        RSSI = Math.pow(10, RSSI);
+                                        savePredictedDistance12 = RSSI;
+                                        roundDistance3();
+                                        latiSave12 = lati;
+                                        longiSave12 = longi;
+                                        autoCounter69 = 0;
+                                        Log.d(TAG, "Address found");
+                                        Calendar cc = Calendar.getInstance();
+                                        System.out.println("Current time => " + cc.getTime());        //Get time
+                                        SimpleDateFormat ee = new SimpleDateFormat("HH:mm");
+                                        notTime = ee.format(cc.getTime());
+                                        Date cj = Calendar.getInstance().getTime();
+                                        SimpleDateFormat dc = new SimpleDateFormat("MMM/dd/yyyy");      //Get date
+                                        notDate = dc.format(cj);
+                                        timeZone = TimeZone.getDefault().getDisplayName();
+                                        notDataDetector();
+                                        anonymousFound = 1;
+                                    }
+                                }, 700);
+                                try {
+                                    JSONObject jsonObject1 = new JSONObject();
+                                    jsonObject1.put("mac", device.getAddress());
+                                    jsonObject1.put("predictedDistance", predictedDistance);
+                                    System.out.println(jsonObject1.toString());
+                                } catch (JSONException e) {
                                 }
                             }
-                            @Override
-                            public void onCancelled(@NonNull DatabaseError databaseError) {
-                                Toast.makeText(getApplicationContext(), "Failed to save phone number.", Toast.LENGTH_SHORT).show();
+                            if (looploop == 3) {
+                                looploop = 0;
+                                zzz = 0;
+                                Log.d(TAG, "zzzLoopLoopIs3 = " + zzz);
+                                final Handler handler1000 = new Handler();
+                                handler1000.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        macAddressList.clear();
+                                        checkMissing();
+                                    }
+                                }, 700);
+                                break;
                             }
-                        });
-                        final Handler handler = new Handler();
-                        handler.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                Log.d(TAG, "calibratedUnit = " + calibratedUnit);
-                        RSSI = (calibratedUnit) - RSSI;
-                        hold = 10 * locationValue;
-                        RSSI = RSSI / hold;
-                        RSSI = Math.pow(10, RSSI);
-                        savePredictedDistance12= RSSI;
-                        roundDistance3();
-                        latiSave12 = lati;
-                        longiSave12 = longi;
-                        autoCounter69 = 0;
-                        Log.d(TAG, "Address found");
-                        Calendar cc = Calendar.getInstance();
-                        System.out.println("Current time => " + cc.getTime());        //Get time
-                        SimpleDateFormat ee = new SimpleDateFormat("HH:mm");
-                        notTime = ee.format(cc.getTime());
-                        Date cj = Calendar.getInstance().getTime();
-                        SimpleDateFormat dc = new SimpleDateFormat("MMM/dd/yyyy");      //Get date
-                        notDate = dc.format(cj);
-                        timeZone = TimeZone.getDefault().getDisplayName();
-                        notDataDetector();
-                        anonymousFound = 1;
+                            if (zzz + 1 == macAddressList.size()) {
+                                zzz = 0;
+                                Log.d(TAG, "zzz0 = " + zzz);
+                                looploop = looploop + 1;
+                            } else {
+                                zzz = zzz + 1;
+                                Log.d(TAG, "zzzend = " + zzz);
                             }
-                        }, 700);
-                        try {
-                            JSONObject jsonObject1 = new JSONObject();
-                            jsonObject1.put("mac", device.getAddress());
-                            jsonObject1.put("predictedDistance", predictedDistance);
-                            System.out.println(jsonObject1.toString());
-                        } catch (JSONException e) {
                         }
-                    }
-                    if(looploop == 3) {
-                        looploop = 0;
-                        zzz = 0;
-                        Log.d(TAG, "zzzLoopLoopIs3 = " + zzz);
-                        final Handler handler1000 = new Handler();
-                        handler1000.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                macAddressList.clear();
-                                checkMissing();
-                            }
-                        }, 700);
-                        break;
-                    }
-                    if(zzz + 1 == macAddressList.size()){
-                        zzz = 0;
-                        Log.d(TAG, "zzz0 = " + zzz);
-                        looploop = looploop + 1;
                     } else {
-                        zzz = zzz + 1;
-                        Log.d(TAG, "zzzend = " + zzz);
+                        Log.d(TAG, "Search Completed...");
                     }
-                    }
-                } else {
-                    Log.d(TAG, "Search Completed...");
                 }
-            }
             }
         }
     };
 
     public void missingSearchLoop() {
         Log.d(TAG, "2.0jj switchOn69 = " + switchOn69);
-        if(switchOn69) {
+        if (switchOn69) {
             System.out.println("Very beginning of BluetoothLoop");
             final Handler handler70 = new Handler();
             run_able = new Runnable() {
@@ -1664,7 +1805,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         System.out.println("public void run()");
                         Log.d(TAG, "2autoCounter 69 = " + autoCounter69);
                         errorkiller69 = 0;
-                        if(switchOn69) {
+                        if (switchOn69) {
                             BblueToothDiscovery();
                             handler70.postDelayed(this, 5000);
                         }
@@ -1711,47 +1852,53 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //------------------------------------------------    \/ Updates list of missing beacon MAC Addresses
 
-    public void checkMissing(){
+    public void checkMissing() {
         Log.d(TAG, "checkMissing");
         a0 = -1;
         DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("MacIDs");
         ValueEventListener eventListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                for(DataSnapshot ds : dataSnapshot.getChildren()) {
+                for (DataSnapshot ds : dataSnapshot.getChildren()) {
                     name = ds.getKey();
-                    if(!name.equals(mac) && !name.equals("PlaceHolder")){       //Changed for testing
+                    if (!name.equals(mac) && !name.equals("PlaceHolder")) {       //Changed for testing
                         a0 = a0 + 1;
                         macAddressList.add(name);
-                        Log.d(TAG, "3.0name = "+name);
-                        Log.d(TAG, "3.0macAddressList = "+macAddressList.get(a0));
+                        Log.d(TAG, "3.0name = " + name);
+                        Log.d(TAG, "3.0macAddressList = " + macAddressList.get(a0));
                         Log.d(TAG, "3.0 " + macAddressList.size());
                     }
                 }
                 Log.d(TAG, "3.2.0 " + macAddressList.size());
                 length = macAddressList.size();
-                if(length <= 6){
+                if (length <= 6) {
                     missingSearchThreshHold = 20;
-                }if(length <= 15 && length > 6){
+                }
+                if (length <= 15 && length > 6) {
                     missingSearchThreshHold = 16;
-                }if(length > 15 && length <= 20){
+                }
+                if (length > 15 && length <= 20) {
                     missingSearchThreshHold = 13;
-                }if(length > 20 && length <= 30){
+                }
+                if (length > 20 && length <= 30) {
                     missingSearchThreshHold = 10;
-                }if(length > 30){
+                }
+                if (length > 30) {
                     missingSearchThreshHold = 8;
                 }
-                Log.d(TAG, "3.0MissingSearchThreshHold = "+missingSearchThreshHold);
+                Log.d(TAG, "3.0MissingSearchThreshHold = " + missingSearchThreshHold);
             }
+
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(DatabaseError databaseError) {
+            }
         };
         ref0.addListenerForSingleValueEvent(eventListener);
     }
 
     //------------------------------------------------------  \/ Uploads discovered data onto the server
 
-    public void notDataDetector(){
+    public void notDataDetector() {
         DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("Notification Data");
         rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -1763,6 +1910,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 rootRef.child(macSave).child(deviceMacAddress).child("longitude" + macSave).setValue(String.valueOf(longiSave12));
                 rootRef.child(macSave).child(deviceMacAddress).child("raw" + macSave).setValue(String.valueOf(savePredictedDistance12));
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
                 Log.d(TAG, "Failed to get missingSwitch state.");
@@ -1772,35 +1920,37 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //---------------------------------------------  \/ Get info from server about iBeacon location
 
-    public void getData(){
-        Log.d(TAG,"getData();");
-            DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("Notification Data");
-            rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    if (dataSnapshot.hasChild(mac)) {
-                        DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("Notification Data").child(mac);
-                        ValueEventListener eventListener = new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                deviceMacAddressList.clear();
-                                for (DataSnapshot ds : dataSnapshot.getChildren()) {
-                                    deviceMacAddressList.add(ds.getKey());
-                                    Log.d(TAG, "ds.getKey():" + ds.getKey());
-                                }
+    public void getData() {
+        Log.d(TAG, "getData();");
+        DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference().child("Notification Data");
+        rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.hasChild(mac)) {
+                    DatabaseReference ref0 = FirebaseDatabase.getInstance().getReference().child("Notification Data").child(mac);
+                    ValueEventListener eventListener = new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            deviceMacAddressList.clear();
+                            for (DataSnapshot ds : dataSnapshot.getChildren()) {
+                                deviceMacAddressList.add(ds.getKey());
+                                Log.d(TAG, "ds.getKey():" + ds.getKey());
                             }
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-                            }
-                        };
-                        ref0.addListenerForSingleValueEvent(eventListener);
-                    }
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+                        }
+                    };
+                    ref0.addListenerForSingleValueEvent(eventListener);
                 }
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
-                    Toast.makeText(getApplicationContext(), "Failed to save phone number.", Toast.LENGTH_SHORT).show();
-                }
-            });
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Toast.makeText(getApplicationContext(), "Failed to save phone number.", Toast.LENGTH_SHORT).show();
+            }
+        });
         if (ev == 1) {
             final Handler hqandler = new Handler();
             hqandler.postDelayed(new Runnable() {
@@ -1811,8 +1961,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }, 6000);
         }
     }
-    public void loopGrab(){
-        if(listMacAddressFlagToo == 0 && !deviceMacAddressList.isEmpty() || override) {
+
+    public void loopGrab() {
+        if (listMacAddressFlagToo == 0 && !deviceMacAddressList.isEmpty() || override) {
             listMacAddressFlagToo = 1;
             Log.d(TAG, "Allowed to loop.");
             Log.d(TAG, "PreLoop: " + deviceMacAddressList.size() + " " + deviceMacAddressList.get(listMacAddressFlag));
@@ -1870,7 +2021,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Log.d(TAG, "Failed to get missingSwitch state.");
                 }
             });
-            Log.d(TAG,"listMacAddressFlag (right before conditions) = "+listMacAddressFlag);
+            Log.d(TAG, "listMacAddressFlag (right before conditions) = " + listMacAddressFlag);
             final Handler handler = new Handler();
             handler.postDelayed(new Runnable() {
                 @Override
@@ -1880,46 +2031,50 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         latiLongiList.add(latiSave10);
                         latiLongiList.add(longiSave10);
                         distanceAwayList.add(savePredictedDistance10);
-                        Log.d(TAG, "Size: "+ latiLongiList.size() + ", " + distanceAwayList.size());
+                        Log.d(TAG, "Size: " + latiLongiList.size() + ", " + distanceAwayList.size());
                         listMacAddressFlag = listMacAddressFlag + 1;
                     }
                     final Handler handlerpo = new Handler();
                     handlerpo.postDelayed(new Runnable() {
                         @Override
                         public void run() {
-                    if (listMacAddressFlag <= deviceMacAddressList.size()-1) {
-                        Log.d(TAG, "Allowed to loop again: " + listMacAddressFlag);
-                        override = true;
-                        loopGrab();
-                    } else if(listMacAddressFlag > deviceMacAddressList.size()-1){
-                        override = false;
-                        listMacAddressFlag = 0;
-                        listMacAddressFlagToo = 0;
-                    }
+                            if (listMacAddressFlag <= deviceMacAddressList.size() - 1) {
+                                Log.d(TAG, "Allowed to loop again: " + listMacAddressFlag);
+                                override = true;
+                                loopGrab();
+                            } else if (listMacAddressFlag > deviceMacAddressList.size() - 1) {
+                                override = false;
+                                listMacAddressFlag = 0;
+                                listMacAddressFlagToo = 0;
+                            }
                         }
                     }, 300);
                 }
             }, 700);
         }
     }
-    public void displayMessage(String message){
+
+    public void displayMessage(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
 
     }
-    public void detectP1(){
+
+    public void detectP1() {
         switchChildDetector();
         checkMissing();
         final Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (!mac.equals("")){
+                if (!mac.equals("")) {
                     getState("missing");
                     getState("auto");
                     getState("search");
+                    getState("RSSI");
+                    getState("voice");
                 }
             }
-        },1500);
+        }, 1500);
 
         handler.postDelayed(new Runnable() {
             @Override
@@ -1928,8 +2083,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }, 3000);
     }
-    public void detectP2(){
-        if(missingSwitch.equals("on")&& !mac.equals("")){
+
+    public void detectP2() {
+        if (missingSwitch.equals("on") && !mac.equals("")) {
             switchOn70 = true;
             ev = 1;
             Log.d(TAG, "Missing switch autoset to ON");
@@ -1942,16 +2098,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             hqqandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                   getData();
+                    getData();
                     final Handler handddler = new Handler();
                     handddler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
                         }
-                    },1000);
+                    }, 1000);
                 }
-            },1000);
-        }else if(missingSwitch.equals("off") && !mac.equals("")){
+            }, 1000);
+        } else if (missingSwitch.equals("off") && !mac.equals("")) {
             switchOn70 = false;
             ev = 0;
             Log.d(TAG, "Missing switch autoset to OFF");
@@ -1963,18 +2119,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             navigationView.getMenu().getItem(0).setChecked(false);
             ev = 0;
         }
-        if(missingSearch.equals("on") && autoCounter69 == 0){
+        if (missingSearch.equals("on") && autoCounter69 == 0) {
             autoThreshHold = 17;
             Log.d(TAG, "Missing search autoset to ON");
-            av=1;
+            av = 1;
             navigationView.getMenu().getItem(2).setChecked(true);
             switchOn69 = true;
             autoflag69 = true;
             autoCounter69 = 0;
             missingSearch = "on";
-        } else if(missingSearch.equals("off")){
+        } else if (missingSearch.equals("off")) {
             autoThreshHold = 17;
-            av=0;
+            av = 0;
             Log.d(TAG, "Missing search autoset to OFF");
             navigationView.getMenu().getItem(2).setChecked(false);
             switchOn69 = false;
@@ -1986,7 +2142,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             navigationView.getMenu().getItem(2).setChecked(false);
             av = 0;
         }
-        if(autoSwitch.equals("on") && !mac.equals("") && autoCounter == 0){
+        if (autoSwitch.equals("on") && !mac.equals("") && autoCounter == 0) {
             iv = 1;
             navigationView.getMenu().getItem(1).setChecked(true);
             switchOn = true;
@@ -1994,7 +2150,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             autoCounter = 0;
             autoSearch();
             Log.d(TAG, "switch autoset to ON");
-        } else if(autoSwitch.equals("off") && !mac.equals("")){
+        } else if (autoSwitch.equals("off") && !mac.equals("")) {
             iv = 0;
             navigationView.getMenu().getItem(1).setChecked(false);
             Log.d(TAG, "switch autoset to OFF");
@@ -2005,19 +2161,349 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             navigationView.getMenu().getItem(1).setChecked(false);
             iv = 0;
         }
+        if (rssiSwitch.equals("on")) {
+            whatever = 11;
+            power = 1;
+            navigationView.getMenu().getItem(11).setChecked(true);
+        } else if (rssiSwitch.equals("off")) {
+            power = 0;
+            navigationView.getMenu().getItem(11).setChecked(false);
+        }
+        if (voiceSwitch.equals("on")) {
+            whatever = 12;
+            voiceThing = 1;
+            navigationView.getMenu().getItem(12).setChecked(true);
+            startRecognizing();
+        } else if (voiceSwitch.equals("off")) {
+            cancelRecognizing();
+            resumeVolume();
+            voiceThing = 0;
+            navigationView.getMenu().getItem(12).setChecked(false);
+        }
     }
-    public double myLocationToPredicted(double lat1,double lon1,double lat2,double lon2) {
+
+    public double myLocationToPredicted(double lat1, double lon1, double lat2, double lon2) {
         int R = 6371; // Radius of the earth in km
-        double dLat =toRadians(lat2-lat1);  // deg2rad below
-        double dLon = toRadians(lon2-lon1);
+        double dLat = toRadians(lat2 - lat1);  // deg2rad below
+        double dLon = toRadians(lon2 - lon1);
         lat1 = toRadians(lat1);
         lat2 = toRadians(lat2);
-        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         double d = (R * c) * 1000; // Distance in m
         Log.d(TAG, "estimatedDistance = " + d);
         DecimalFormat twoDForm = new DecimalFormat("####.##");
         return Double.valueOf(twoDForm.format(d));
+    }
+    public void init(Context context) {
+        Log.d(TAG,"lol intializing mic");
+       mSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
+        mSpeechRecognizer.setRecognitionListener(new SpeechRecognitionListener());
+        startGoogleSr();
+    }
+public void muteBeep(){
+    AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+    currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+    AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+    audio.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+}
+public void resumeVolume(){
+    final Handler handleri = new Handler();
+    handleri.postDelayed(new Runnable() {
+        @Override
+        public void run() {
+            AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, currentVolume, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+        }
+    }, 800);
+}
+    public void startGoogleSr() {
+        Log.d(TAG,"lol starting mic (outside of mSpeechRecognizer != null)");
+        if (mSpeechRecognizer != null) {
+            Log.d(TAG,"lol starting mic (mSpeechRecognizer != null)");
+            mSpeechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH);
+            mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,"en");
+            mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+            mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        }
+    }
+    void cancelRecognizing() {
+        if (mSpeechRecognizer != null) {
+            mSpeechRecognizer.cancel();
+            Log.d(TAG,"lol canceled Speech");
+        }
+    }
+    void startRecognizing(){
+        if(mSpeechRecognizer != null && !inBackground){
+            muteBeep();
+            final Handler handleri = new Handler();
+            handleri.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mSpeechRecognizer.startListening(mSpeechRecognizerIntent);
+                    resumeVolume();
+                }
+            }, 1300);
+            Log.d(TAG,"lol Listening for Speech");
+        } else {
+            navigationView.getMenu().getItem(whatever).setChecked(false);
+        }
+    }
+    private class SpeechRecognitionListener extends Activity implements RecognitionListener {
+        String lastPartialText;
+
+        @Override
+        public void onReadyForSpeech(Bundle params) {
+            Log.v(TAG, "lol >>> onReadyForSpeech");
+            Log.d(TAG,"lol ready");
+        }
+
+        @Override
+        public void onBeginningOfSpeech() {
+            Log.v(TAG, "lol >>> onBeginningOfSpeech");
+            Log.d(TAG,"lol recognizing");
+        }
+
+        @Override
+        public void onRmsChanged(float rmsdB) {
+        }
+
+        @Override
+        public void onBufferReceived(byte[] buffer) {
+
+        }
+
+        @Override
+        public void onEndOfSpeech() {
+            Log.v(TAG, "lol >>> onEndOfSpeech");
+            Log.d(TAG,"lol waiting result");
+        }
+
+        @Override
+        public void onError(int error) {
+            Log.v(TAG, "lol >>> onError : " + error);
+            switch (error) {
+                case SpeechRecognizer.ERROR_AUDIO:
+                    Log.e(TAG, "ERROR_AUDIO");
+                    displayMessage("You have an audio error.");
+                    startRecognizing();
+                    break;
+                case SpeechRecognizer.ERROR_CLIENT:
+                    Log.e(TAG, "ERROR_CLIENT");
+                    displayMessage("There was a client error.");
+                    startRecognizing();
+                    break;
+                case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
+                    Log.e(TAG, "ERROR_INSUFFICIENT_PERMISSIONS");
+                    displayMessage("Insufficient Permissions: Authorize in settings.");
+                    startRecognizing();
+                    break;
+                case SpeechRecognizer.ERROR_NETWORK:
+                    Log.e(TAG, "ERROR_NETWORK");
+                    displayMessage("There was a network error.");
+                    startRecognizing();
+                    break;
+                case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                    Log.e(TAG, "ERROR_NETWORK_TIMEOUT");
+                    displayMessage("The network has timed out.");
+                    startRecognizing();
+                    break;
+                case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
+                    Log.e(TAG, "ERROR_RECOGNIZER_BUSY");
+                    startRecognizing();
+                    break;
+                case SpeechRecognizer.ERROR_SERVER:
+                    Log.e(TAG, "ERROR_SERVER");
+                    displayMessage("Unfortunately, there was a server error.");
+                    startRecognizing();
+                    break;
+                case SpeechRecognizer.ERROR_NO_MATCH:
+                    Log.v(TAG, "ERROR_NO_MATCH");
+                    startRecognizing();
+                    break;
+                case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
+                    Log.v(TAG, "ERROR_SPEECH_TIMEOUT");
+                    startRecognizing();
+                    break;
+                default:
+                    Log.v(TAG, "ERROR_UNKOWN");
+                    displayMessage("There was an unknown error.");
+                    startRecognizing();
+            }
+        }
+
+        @Override
+        public void onPartialResults(Bundle partialResults) {
+            Log.v(TAG, "lol >>> onPartialResults");
+            List<String> resultList = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+            if (resultList != null) {
+                String text = resultList.get(0);
+                if (text.equals(lastPartialText)) {
+                    return;
+                }
+                lastPartialText = text;
+                Log.v(TAG, "lol partial : " + text);
+            }
+        }
+
+        @Override
+        public void onResults(Bundle results) {
+            if(voiceSwitch.equals("on")) {
+                Log.v(TAG, "lol >>> onResults");
+                ArrayList<String> resultList = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (resultList != null) {
+                    String text = resultList.get(0);
+                    Log.d(TAG, "lol Voice result = " + text);
+                    if (text.toLowerCase().indexOf("okay track beacon".toLowerCase()) != -1 && voiceSwitch.equals("on")) {
+                        editor = settinggs.edit();
+                        editor.putString("mac", mac);
+                        Intent myIntent = new Intent(MapsActivity.this, voiceCommands.class);
+                        MapsActivity.this.startActivity(myIntent);
+                    } else {
+                        startRecognizing();
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void onEvent(int eventType, Bundle params) {
+            Log.v(TAG, "lol >>> onEvent type = " + eventType);
+        }
+    }
+    @Override
+    protected void onDestroy() {
+        // TODO Auto-generated method stub
+        super.onDestroy();
+        if (mSpeechRecognizer != null)
+        {
+            mSpeechRecognizer.destroy();
+        }
+    }
+    @Override
+    protected void onResume(){
+        super.onResume();
+        inBackground = false;
+    }
+    @Override
+    protected void onPause(){
+        super.onPause();
+        inBackground = true;
+    }
+    public void voiceInfo(){
+        final AlertDialog.Builder builder100 = new AlertDialog.Builder(this);
+        // Simply Do noting!
+        builder100.setMessage("In order to trigger voice command, you must first say 'Ok Trackbeacon'. Commands will be shown in a different page. Voice command will NOT work if you do not have Google Voice setup with the English Language downloaded. Also, make sure that your device's volume is on and that it support TextToSpeech functions! (Screenshot this if necessary)");
+        builder100.setTitle("Voice Command Information");
+        builder100.setCancelable(false);
+        builder100.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                navigationView.getMenu().getItem(12).setChecked(true);
+                voiceThing = 1;
+                voiceSwitch = "on";
+                startRecognizing();
+                DatabaseReference mDatabase106 = FirebaseDatabase.getInstance().getReference();
+                mDatabase106.child("Switches").child("voiceSwitch" + mac).setValue("on");
+            }
+        });
+        AlertDialog alert = builder100.create();
+        alert.show();
+    }
+    public void getVoiceCommandData(){
+        DatabaseReference mDatabase10 = FirebaseDatabase.getInstance().getReference();
+        DatabaseReference mRSSI10 = mDatabase10.child("Voice Commands");
+        mRSSI10.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.hasChild("jump2My" + mac)) {
+                    mRSSI10.child("jump2My" + mac).removeValue();
+                    getLocationgps();
+                    LatLng latLng = new LatLng(lati, longi);
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                    mMap.animateCamera(CameraUpdateFactory.zoomTo(19));
+                }
+                Log.d(TAG, "longiSave10 " + longiSave10);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.d(TAG, "Failed to get missingSwitch state.");
+            }
+        });
+        DatabaseReference mDatabase11 = FirebaseDatabase.getInstance().getReference();
+        DatabaseReference mRSSI11 = mDatabase11.child("Voice Commands");
+        mRSSI11.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.hasChild("jump2Beacon" + mac)) {
+                    mRSSI11.child("jump2Beacon" + mac).removeValue();
+                    if (latiSaveDouble == -999999999 && longiSaveDouble == -999999999) {
+                        Toast.makeText(getApplicationContext(), "Your iBeacon has not been found by another user so your command cannot be fulfilled!", Toast.LENGTH_SHORT).show();
+                    } else if (latiSaveDouble != -999999999 && longiSaveDouble != -999999999) {
+                        LatLng latjng = new LatLng(latiSaveDouble, longiSaveDouble);
+                        mMap.moveCamera(CameraUpdateFactory.newLatLng(latjng));
+                        mMap.animateCamera(CameraUpdateFactory.zoomTo(19));
+                    }
+                }
+                Log.d(TAG, "longiSave10 " + longiSave10);
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.d(TAG, "Failed to get missingSwitch state.");
+            }
+        });
+        DatabaseReference mDatabase12 = FirebaseDatabase.getInstance().getReference();
+        DatabaseReference mRSSI12 = mDatabase12.child("Voice Commands");
+        mRSSI12.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.hasChild("clearAnonymous" + mac)) {
+                    mRSSI12.child("clearAnonymous" + mac).removeValue();
+                    anonymousFound = 0;
+                    displayMessage("Points Cleared!");
+                    mMap.clear();
+                }
+                Log.d(TAG, "longiSave10 " + longiSave10);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.d(TAG, "Failed to get missingSwitch state.");
+            }
+        });
+        DatabaseReference mDatabase13 = FirebaseDatabase.getInstance().getReference();
+        DatabaseReference mRSSI13 = mDatabase13.child("Voice Commands");
+        mRSSI13.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.hasChild("clearFound" + mac)) {
+                    mRSSI13.child("clearFound" + mac).removeValue();
+                    dd = 0;
+                    DatabaseReference firebase = FirebaseDatabase.getInstance().getReference().child("Notification Data");
+                    latiSaveDouble = -999999999;
+                    longiSaveDouble = -999999999;
+                    savePredictedDistance1000 = "0";
+                    final Handler handleri = new Handler();
+                    handleri.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (!mac.equals("")) {
+                                firebase.child(mac).removeValue();
+                                Toast.makeText(getApplicationContext(), "Data successfully cleared! (Enabling missing beacon will update values)", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }, 1000);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.d(TAG, "Failed to get missingSwitch state.");
+            }
+        });
+
     }
 }

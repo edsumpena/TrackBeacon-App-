@@ -39,4 +39,5 @@
     </string>
     <string name="title_activity_calibration">calibration</string>
     <string name="title_activity_recalibrate">recalibrate</string>
+    <string name="title_activity_voice_commands">voiceCommands</string>
 </resources>

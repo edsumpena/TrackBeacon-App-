@@ -50,6 +50,10 @@
         android:icon="@drawable/power"
         android:title="Show RSSI Values (debug)"/>
     <item
+        android:id="@+id/nav_voice"
+        android:icon="@drawable/voice"
+        android:title="Voice Commands"/>
+    <item
         android:id="@+id/nav_ChangeBeacon"
         android:icon="@drawable/exit"
         android:title="Exit/Change Beacon"/>
